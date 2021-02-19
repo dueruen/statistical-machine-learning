@@ -9,10 +9,10 @@ library(ggplot2)
 load("id100.Rda")
 load("idList-co-100.Rdata")
 
-knn_and_cross <- function(data_set, seed){
+knn_and_cross <- function(data_set, seed, k_size){
   #Start seeding the data
   set.seed(seed)
-
+  
   #Shuffle the dataset id100.Rda called data_set
   dataset_shuffle <-data_set[sample(nrow(data_set)),]  
   
@@ -47,10 +47,10 @@ knn_and_cross <- function(data_set, seed){
   # the vectors, wbcd_train_labels and wbcd_test_labels. We will use these in the
   # next steps of training and evaluating our classifier.
   
-  # knn() can be used for training and classification and needs 4 parameters(train, test, class, k) sqrt(stÃ¸rrelse af dataset)
+  # knn() can be used for training and classification and needs 4 parameters(train, test, class, k) sqrt(størrelse af dataset)
   # The function returns a factor vector of predicted classes for each row in the test data frame
   start_time <- Sys.time()
-  dataset_predicted <- knn(train = dataset_training, test = dataset_test, cl = dataset_training_labels, k = 63)
+  dataset_predicted <- knn(train = dataset_training, test = dataset_test, cl = dataset_training_labels, k = k_size)
   end_time <- Sys.time()
   
   #http://www.socr.umich.edu/people/dinov/courses/DSPA_notes/06_LazyLearning_kNN.html good link for the example
@@ -70,7 +70,7 @@ knn_and_cross <- function(data_set, seed){
   summary(knntuning)  
 }
 
-knn_and_cross(id, 423)
+knn_and_cross(id, 423, 63)
 
 #1.4.3 Cross validation: Perform a cross validation with a 90% / 10% split with 10 runs. 
 # Report mean and standard deviation of the performance
@@ -123,7 +123,7 @@ idLoaded <- as.data.frame(idLoaded)
 idLoaded[, 1] <- factor(idLoaded[, 1])
 
 ## WARNING ## TAKES A LONG TIME 1-5min
-knn_and_cross(idLoaded, 423)
+knn_and_cross(idLoaded, 423, 63)
 ## WARNING ## TAKES A EVEN LONG TIME 10-30min
 cross_validation(idLoaded, 123)
 
@@ -139,3 +139,16 @@ res <- lapply(c(1:10), function(x) {
 })
 str(res)
 
+
+#1.4.5
+# Comment out CrossTable generation and k tuning for faster run times in knn_and_cross
+res_one <- lapply(seq(1, 101, by = 20), function(x) {
+  print(x)
+  knn_and_cross(id, 423, x)
+})
+
+## WARNING TAKES A LONG TIME appx. 50 mins
+res_ten <- lapply(seq(1, 101, by = 20), function(x) {
+  print(x)
+  knn_and_cross(idLoaded, 423, x)
+})
