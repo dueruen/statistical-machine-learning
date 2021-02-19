@@ -1,0 +1,6 @@
+.RData
+.RDataTmp
+.Rhistory
+*.Rda
+*.rdata
+
