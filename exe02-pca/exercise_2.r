@@ -7,6 +7,7 @@ library(e1071)
 library(ggplot2)
 library(irr)
 library(tibble)
+library("spatstat")
 
 #Don't print numbers as exponential notation
 options("scipen"=100, "digits"=4)
@@ -185,7 +186,6 @@ cross_validation(dataset_z,423)
 #Exercise 2.3
 
 # The code from the assignment document, which apparently performs  Gaussian smoothing on the data 
-library("spatstat")
 summary(idLoaded)
 id_mat <- data.matrix(idLoaded, rownames.force = NA)
 imageSize <- sqrt(ncol(id_mat) - 1)
