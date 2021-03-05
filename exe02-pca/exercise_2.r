@@ -61,80 +61,123 @@ abline(h = 0.95, col="blue", lty=5)
 abline(h = 0.99, col="yellow", lty=5)
 
 # 2.1.2
-acc_vals <- c(0.80, 0.90, 0.95, 0.99)
-k_vals <- c(1, 3, 5)
+checkPerformance <- function(traingDataSet, testDataSet) {
+  # The PC accuracy percentages 
+  acc_vals <- c(0.80, 0.90, 0.95, 0.99)
+  
+  # K values to test
+  k_vals <- c(1, 3, 5)
+  
+  # List to store the results in
+  accuracy_all <- list(c(k_vals))
+  error_all <- list(c(k_vals))
+  time_all <- list(c(k_vals))
+  
+  # Count value used to set values in lists
+  count = 0
+  
+  # The traing data no without label
+  df.train.data <- traingDataSet[,-1]
+  # The traing data label
+  df.train.labels <- traingDataSet[,1]
+  
+  # The test data no without label
+  df.test.data <- testDataSet[,-1]
+  # The traing data label
+  df.test.labels <- testDataSet[,1]
+  
+  # Loop going through each accuracy value
+  for (a in acc_vals) {
+    # Used to store the results for the accuracy value
+    accuracy <- c()
+    error <- c()
+    time <- c()
+    
+    # Loop testing each K value
+    for (k in k_vals){
+      str(a)
+      str(k)
+      
+      # Make pca
+      pca <- prcomp(df.train.data, scale = FALSE) 
+      
+      # The number of PC to include
+      in_pc <- cumsum(pve) <= a
+      
+      # Create the new training set based using pci
+      df.train.p <- predict(pca, newdata = df.train.data)[, in_pc]
+      
+      # Create the new test set based using pci
+      df.test.p <- predict(pca, newdata = df.test.data)[, in_pc]
+      
+      # KNN on the new dataset
+      start_time <- Sys.time()
+      test.preds.pca <- knn(train = df.train.p, test = df.test.p, cl = df.train.labels, k = k)
+      end_time <- Sys.time()
+      
+      # Calc the accuracy of knn
+      accuracy.k5 = mean(test.preds.pca == df.test.labels)
+      str(accuracy.k5)
+      
+      # Calc the error rate of knn
+      error.rate.k5 = mean(test.preds.pca != df.test.labels)
+      str(error.rate.k5)
+      
+      run_time <- end_time - start_time
+      str(run_time)
+      
+      accuracy <- c(accuracy, accuracy.k5)
+      error <- c(error, error.rate.k5)
+      time <- c(time, run_time)
+    }
+    count <- count + 1
+    accuracy_all[[count + 1]] <- accuracy
+    error_all[[count + 1]] <- error
+    time_all[[count + 1]] <- time
+  }
+  
+  tr <- tibble(kVals = accuracy_all[[1]], accuracy = accuracy_all[[2]], y = accuracy_all[[3]], z = accuracy_all[[4]], q = accuracy_all[[5]])
+  tr_error <- tibble(kVals = error_all[[1]], errorRate = error_all[[2]], y = error_all[[3]], z = error_all[[4]], q = error_all[[5]])
+  tr_time <- tibble(kVals = time_all[[1]], runTime = time_all[[2]], y = time_all[[3]], z = time_all[[4]], q = time_all[[5]])
+  
+  return (list(tr, tr_error, tr_time))
+}
 
-accuracy_all <- list(c(k_vals))
-error_all <- list(c(k_vals))
-time_all <- list(c(k_vals))
-count = 0
-
+# Disjunct 
+# Comment this out or the All persons in 
 set.seed(1234) # reproducibility
 samp.train <- sample(nrow(idLoaded), nrow(idLoaded)*0.8)
 df.train <- idLoaded[samp.train,,]
 samp.test <- sample(setdiff(seq(nrow(idLoaded)), samp.train), length(setdiff(seq(nrow(idLoaded)), samp.train)) * 0.2)
 df.test <- idLoaded[samp.test,]
 
-df.train.data <- df.train[,-1]
-df.train.labels <- df.train[,1]
-df.test.data <- df.test[,-1]
-df.test.labels <- df.test[,1]
+pro_res <- checkPerformance(df.train, df.test)
 
-for (a in acc_vals) {
-  i <- 0
-  accuracy <- c()
-  error <- c()
-  time <- c()
-  
-  for (k in k_vals){
-    str(a)
-    str(k)
-    pca <- prcomp(df.train.data, scale = FALSE) 
-    
-    df.train.p <- predict(pca, newdata = df.train.data)[, cumsum(pve) <= a]
-    
-    df.test.p <- predict(pca, newdata = df.test.data)[, cumsum(pve) <= a]
-    
-    start_time <- Sys.time()
-    test.preds.pca <- knn(train = df.train.p, test = df.test.p, cl = df.train.labels, k = k)
-    end_time <- Sys.time()
-    
-    accuracy.k5 = mean(test.preds.pca == df.test.labels)
-    str(accuracy.k5)
-    error.rate.k5 = mean(test.preds.pca != df.test.labels)
-    str(error.rate.k5)
-    
-    run_time <- end_time - start_time
-    str(run_time)
-    
-    accuracy <- c(accuracy, accuracy.k5)
-    error <- c(error, error.rate.k5)
-    time <- c(time, run_time)
-    i <- i + 1
-  }
-  count <- count + 1
-  accuracy_all[[count + 1]] <- accuracy
-  error_all[[count + 1]] <- error
-  time_all[[count + 1]] <- time
-}
+# All persons in
+# Comment this out or the Disjunct 
+set.seed(1234) # reproducibility
+dataset_shuffle <-idLoaded[sample(nrow(idLoaded)),]  
+samp.train <- sample(nrow(dataset_shuffle), nrow(dataset_shuffle)*0.8)
+df.train <- dataset_shuffle[samp.train,,]
+samp.test <- sample(setdiff(seq(nrow(dataset_shuffle)), samp.train), length(setdiff(seq(nrow(dataset_shuffle)), samp.train)) * 0.2)
+df.test <- dataset_shuffle[samp.test,]
 
-tr <- tibble(kVals = accuracy_all[[1]], accuracy = accuracy_all[[2]], y = accuracy_all[[3]], z = accuracy_all[[4]], q = accuracy_all[[5]])
-tr_error <- tibble(kVals = error_all[[1]], errorRate = error_all[[2]], y = error_all[[3]], z = error_all[[4]], q = error_all[[5]])
-tr_time <- tibble(kVals = time_all[[1]], runTime = time_all[[2]], y = time_all[[3]], z = time_all[[4]], q = time_all[[5]])
+pro_res <- checkPerformance(df.train, df.test)
 
-ggplot(data = tr, aes(x = kVals))+
+
+ggplot(data = pro_res[[1]], aes(x = kVals))+
   geom_line(aes(y = accuracy, color = "80%")) + 
   geom_line(aes(y = y, color="90%")) +
   geom_line(aes(y = z, color="95%")) +
   geom_line(aes(y = q, color="99%"))
 
-ggplot(data = tr_error, aes(x = kVals))+
+ggplot(data = pro_res[[2]], aes(x = kVals))+
   geom_line(aes(y = errorRate, color = "80%")) + 
   geom_line(aes(y = y, color="90%")) +
   geom_line(aes(y = z, color="95%")) +
   geom_line(aes(y = q, color="99%"))
 
-ggplot(data = tr_time, aes(x = kVals))+
+ggplot(data = pro_res[[3]], aes(x = kVals))+
   geom_line(aes(y = runTime, color = "80%")) + 
   geom_line(aes(y = y, color="90%")) +
   geom_line(aes(y = z, color="95%")) +
