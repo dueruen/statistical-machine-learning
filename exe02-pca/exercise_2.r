@@ -187,12 +187,14 @@ cross_validation(dataset_z,423)
 
 # The code from the assignment document, which apparently performs  Gaussian smoothing on the data 
 summary(idLoaded)
+sigma_value <- 0.5 #Controls the amount of variation allowed around the mean value during the smoothing
 id_mat <- data.matrix(idLoaded, rownames.force = NA)
 imageSize <- sqrt(ncol(id_mat) - 1)
 rotate <- function(x) t(apply(x, 2, rev))
 
-smoothImage <- function(grayImg){
-  smoothed <- as.matrix(blur(as.im(grayImg), sigma = 0.5, normalise=FALSE, bleed = TRUE, varcov=NULL))
+#Gaussian smoothing function
+smoothImage <- function(grayImg, sigma_value){
+  smoothed <- as.matrix(blur(as.im(grayImg), sigma = sigma_value, normalise=FALSE, bleed = TRUE, varcov=NULL))
   return(smoothed)
 }
  
@@ -200,7 +202,7 @@ smoothImage <- function(grayImg){
 for(i in 1:nrow(id_mat)) {
   rotated <- c(id_mat[i,2:ncol(idLoaded)])
   image <- matrix(rotated,nrow = imageSize,ncol = imageSize, byrow = FALSE)
-  image <- smoothImage(image)
+  image <- smoothImage(image, sigma_value)
   id_mat[i,2:ncol(id_mat)] <- matrix(image,nrow = 1,ncol = ncol(id_mat) - 1, byrow = FALSE)
 }
 idSmoothed <- as.data.frame(id_mat)
