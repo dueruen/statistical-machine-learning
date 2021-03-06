@@ -50,9 +50,14 @@ pve
 #98 PCA represent 99% of the accumulated variance
 #sum(pve[1:98])
 
+# A plot of the variance
+plot(pr.var[1:70], xlab="Principal Component", ylab="Variance", ylim=c(0,40),type="b")
+abline(v = 8, col="green", lty=5)
+abline(v = 67, col="red", lty=5)
+
 #A plot of the PVE explained by each component
-plot(pve[1:100], xlab="Principal Component", ylab="Proportion of Variance Explained", ylim=c(0,1),type="b")
-abline(v = 5, col="red", lty=5)
+plot(pve[1:20], xlab="Principal Component", ylab="Proportion of Variance Explained",type="b")
+abline(v = 8, col="red", lty=5)
 #the cumulative PVE plotted. This shows the CDF and tells us when x% of variance is explained. Only take the first 100 PCA's
 plot(cumsum(pve[1:100]), xlab="Principal Component ", ylab=" Cumulative Proportion of Variance Explained ", ylim=c(0,1), type="b")
 abline(h = 0.8, col="red", lty=5)
@@ -66,7 +71,7 @@ checkPerformance <- function(traingDataSet, testDataSet) {
   acc_vals <- c(0.80, 0.90, 0.95, 0.99)
   
   # K values to test
-  k_vals <- c(1, 3, 5)
+  k_vals <- c(2, 3, 4, 7)
   
   # List to store the results in
   accuracy_all <- list(c(k_vals))
