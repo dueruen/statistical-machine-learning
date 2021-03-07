@@ -15,12 +15,17 @@ options("scipen"=100, "digits"=4)
 #Load the dataset
 load("idList-cornered-100-2021.Rdata")
 
-#
+# Data to dataframe
 idLoaded <- do.call(rbind, idList[1:13]) 
 idLoaded <- as.data.frame(idLoaded)
 idLoaded[,1] <- factor(idLoaded[,1])
 
+# Remove factor column
 dataset_no_labels <- idLoaded[,-1]
+
+#####################
+## Exercise 2.1 -  Principal Component Analysis (PCA)
+#####################
 
 # 2.1.1 - Show the standard deviation ( From prcompEigenvalues ), the proportion of variance 
 # and the cumulative sum of variance of the principal components.
@@ -201,7 +206,9 @@ ggplot(data = pro_res[[3]], aes(x = kVals))+
   geom_line(aes(y = q, color="99%"))
 
 
-# Exercise 2.2 - Normalization
+#####################
+## Exercise 2.2 - Normalization
+#####################
 
 # Apply normalization(Z-standardization) 
 dataset_z <- as.data.frame(scale(idLoaded[-1]))
@@ -291,7 +298,9 @@ cross_validation_and_print <- function (data_set, seed, beforePCA) {
 cross_validation_and_print(idLoaded, 423, beforePCA = FALSE)
 cross_validation_and_print(dataset_z, 423, beforePCA = TRUE)
 
-#Exercise 2.3
+#####################
+## Exercise 2.3 - Preprocessing
+#####################
 
 # The code from the assignment document, which apparently performs  Gaussian smoothing on the data 
 summary(idLoaded)
@@ -315,9 +324,14 @@ for(i in 1:nrow(id_mat)) {
 }
 idSmoothed <- as.data.frame(id_mat)
 idSmoothed[,1] <- factor(idLoaded) #idSmoothed holds the smoothed image data 
- 
 
-#Exercise 2.4 - Reconstruction using PCA
+#
+cross_validation_and_print(idSmoothed, 423, beforePCA = FALSE)
+ 
+#####################
+## Exercise 2.4 - Reconstruction using PCA
+#####################
+
 plotCipherImage <- function(cipher, rawDataset){
   id_mat <-data.matrix(rawDataset, rownames.force = NA)
   rotate <-function(x) t(apply(x,2, rev))
