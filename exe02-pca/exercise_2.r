@@ -363,3 +363,19 @@ trunc <-pca$x[1,cumsum(Proportion) < 0.99] %*%
 t(pca$rotation[,cumsum(Proportion) < 0.99])
 trunc <-scale(trunc, center = -1 * pca$center, scale=FALSE)
 
+## 2.4.2
+plotEigen <- function (num) {
+  id_mat <-data.matrix(pca$rotation[,num], rownames.force = NA)
+  rotate <-function(x) t(apply(x,2, rev))
+  imageSize <-sqrt(nrow(id_mat))
+  # Plot an image of a single cipher - To change the cipher to plot, change the for loop range
+  
+  rotated <-c(id_mat[])
+  rotated <-((rotated -min(rotated)) / (max(rotated) -min(rotated)))
+  image <-matrix(rotated ,nrow = imageSize ,ncol = imageSize, byrow = FALSE)
+  image <-rotate(image)
+  image( image,  zlim=c(0,1), col=gray(0:100/100) )
+}
+>>>>>>> b54809d5ab4495bc095d5314ff3bd522bef2e600
+
+plotEigen(1)
