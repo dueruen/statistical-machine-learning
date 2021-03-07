@@ -314,7 +314,7 @@ smoothImage <- function(grayImg, sigma_value){
   smoothed <- as.matrix(blur(as.im(grayImg), sigma = sigma_value, normalise=FALSE, bleed = TRUE, varcov=NULL))
   return(smoothed)
 }
- 
+
 # Smooth all images
 for(i in 1:nrow(id_mat)) {
   rotated <- c(id_mat[i,2:ncol(idLoaded)])
@@ -337,13 +337,13 @@ plotCipherImage <- function(cipher, rawDataset){
   rotate <-function(x) t(apply(x,2, rev))
   imageSize <-sqrt(ncol(id_mat) -1)
   # Plot an image of a single cipher - To change the cipher to plot, change the for loop range
-  for(i in 1:cipher + 1){
-    rotated <-c(id_mat[-200+i*200+1,2:ncol(id_mat)])
-    rotated <-((rotated -min(rotated)) / (max(rotated) -min(rotated)))
-    image <-matrix(rotated,nrow = imageSize,ncol = imageSize, byrow = FALSE)
-    image <-rotate(image)
-    image( image,  zlim=c(0,1), col=gray(0:100/100) )
-  } 
+  #for(i in 1:cipher + 1){
+  rotated <-c(id_mat[-200+(cipher + 1)*200+1,2:ncol(id_mat)])
+  rotated <-((rotated -min(rotated)) / (max(rotated) -min(rotated)))
+  image <-matrix(rotated,nrow = imageSize,ncol = imageSize, byrow = FALSE)
+  image <-rotate(image)
+  image( image,  zlim=c(0,1), col=gray(0:100/100) )
+  #} 
 }
 
 plotCipherImage(2,idLoaded)
@@ -353,7 +353,6 @@ plotEigen <- function (num) {
   id_mat <-data.matrix(pca$rotation[,num], rownames.force = NA)
   rotate <-function(x) t(apply(x,2, rev))
   imageSize <-sqrt(nrow(id_mat))
-  # Plot an image of a single cipher - To change the cipher to plot, change the for loop range
   
   rotated <-c(id_mat[])
   rotated <-((rotated -min(rotated)) / (max(rotated) -min(rotated)))
@@ -363,3 +362,29 @@ plotEigen <- function (num) {
 }
 
 plotEigen(1)
+
+
+
+
+rotated <-c(id_mat[])
+rotated <-((rotated -min(rotated)) / (max(rotated) -min(rotated)))
+image <-matrix(rotated ,nrow = imageSize ,ncol = imageSize, byrow = FALSE)
+image <-rotate(image)
+image( image,  zlim=c(0,1), col=gray(0:100/100) )
+
+plotReconstructionCipherImage <- function(cipher, varianceProcent){
+  trunc <- pca$x[-200+(cipher+1)*200+1,cumsum(pve) < varianceProcent] %*% t(pca$rotation[,cumsum(pve) < varianceProcent])
+  trunc <- scale(trunc, center = -1 * pca$center, scale=FALSE)
+  id_mat <- trunc
+  rotate <-function(x) t(apply(x,2, rev))
+  imageSize <-sqrt(ncol(id_mat))
+  
+  rotated <-c(id_mat[])
+  rotated <-((rotated -min(rotated)) / (max(rotated) -min(rotated)))
+  image <-matrix(rotated,nrow = imageSize,ncol = imageSize, byrow = FALSE)
+  image <-rotate(image)
+  image( image,  zlim=c(0,1), col=gray(0:100/100) )
+}
+
+plotReconstructionCipherImage(7, 0.99)
+
