@@ -262,9 +262,14 @@ cross_validation <- function(data_set, seed, beforePCA) {
     run_time <- end_time - start_time
     str(run_time)
     
-    #Kappa is used to compare performance in machine learning
-    kappa <- kappa2(data.frame(data_test_labels, test.preds.pca))$value
-    return(kappa)
+    # Calc the accuracy of knn
+    accuracy = mean(test.preds.pca == data_test_labels)
+    str(accuracy)
+    
+    # Calc the error rate of knn
+    error.rate = mean(test.preds.pca != data_test_labels)
+    str(error.rate)
+    return(list(accuracy, error.rate, run_time))
   })
   return(cross_validation_results)
 }
@@ -273,15 +278,18 @@ cross_validation_and_print <- function (data_set, seed, beforePCA) {
   cross_val_res <- cross_validation(data_set, seed, beforePCA)
   
   #Examine the results
-  str(cross_val_res)
+  #str(cross_val_res)
   
+  tt <- do.call(rbind, cross_val_res[1:10])
   #Calculate mean of these 10 results while cross_validation_results is not a numeric vector, 
   # i'll have to do unlist() which creates a numeric vector where i can use mean() 
-  cat(" The mean kappa statistic is:", mean(unlist(cross_val_res)))
-  cat(" The standard deviation for kappa is:", sd(unlist(cross_val_res)))
+  cat(" The accuracy is:", mean(unlist(tt[,1])))
+  cat(" The error rate is:", mean(unlist(tt[,2])))
+  cat(" The run time is:", mean(unlist(tt[,3])))
 }
 
 cross_validation_and_print(idLoaded, 423, beforePCA = FALSE)
+cross_validation_and_print(dataset_z, 423, beforePCA = TRUE)
 
 #Exercise 2.3
 
