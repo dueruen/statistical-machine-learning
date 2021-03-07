@@ -16,7 +16,7 @@ options("scipen"=100, "digits"=4)
 load("idList-cornered-100-2021.Rdata")
 
 #
-idLoaded <- do.call(rbind, idList[1:13])
+idLoaded <- do.call(rbind, idList[1:13]) 
 idLoaded <- as.data.frame(idLoaded)
 idLoaded[,1] <- factor(idLoaded[,1])
 
@@ -25,19 +25,31 @@ dataset_no_labels <- idLoaded[,-1]
 # 2.1.1 - Show the standard deviation ( From prcompEigenvalues ), the proportion of variance 
 # and the cumulative sum of variance of the principal components.
 #Perform PCA on the dataset, and scale=TRUE because the variables should have standard deviation one. This is advisable.
-pca <- prcomp(dataset_no_labels,scale=TRUE)
+performPCA <- function(dataset){
+  pca <- prcomp(dataset,scale=FALSE)
+  return (pca)
+}
+
+pca <- performPCA(dataset_no_labels)
 
 #Show the summary with standard deviation, proportion of variance and Cumulative Proportion
 summary(pca)
 
-#The variance explained by each principal component is obtained by squaring these:
-pr.var=pca$sdev^2
-pr.var
+calculateExplainedVariance <- function(pca){
+  #The variance explained by each principal component is obtained by squaring these:
+  pr.var=pca$sdev^2 
+  return (pr.var)
+}
+pr.var <- calculateExplainedVariance(pca)
 #To compute the proportion of variance explained by each principal component, 
 # we simply divide the variance explained by each principal component by the total variance explained by all four principal components:
-pve=pr.var/sum(pr.var)
-pve
+calculatePropOfVariance <- function(pr.var){
+  pve=pr.var/sum(pr.var)
+  return (pve)
+}
 
+pve <- calculatePropOfVariance(pr.var)
+pve
 #24 PCA represent 80% of the accumulated variance
 #sum(pve[1:24])
 
@@ -81,14 +93,14 @@ checkPerformance <- function(traingDataSet, testDataSet) {
   # Count value used to set values in lists
   count = 0
   
-  # The traing data no without label
+  # The training data no without label
   df.train.data <- traingDataSet[,-1]
-  # The traing data label
+  # The training data label
   df.train.labels <- traingDataSet[,1]
   
   # The test data no without label
   df.test.data <- testDataSet[,-1]
-  # The traing data label
+  # The training data label
   df.test.labels <- testDataSet[,1]
   
   # Loop going through each accuracy value
@@ -109,10 +121,10 @@ checkPerformance <- function(traingDataSet, testDataSet) {
       # The number of PC to include
       in_pc <- cumsum(pve) <= a
       
-      # Create the new training set based using pci
+      # Create the new training set based using pcq
       df.train.p <- predict(pca, newdata = df.train.data)[, in_pc]
       
-      # Create the new test set based using pci
+      # Create the new test set based using pca
       df.test.p <- predict(pca, newdata = df.test.data)[, in_pc]
       
       # KNN on the new dataset
@@ -191,7 +203,7 @@ ggplot(data = pro_res[[3]], aes(x = kVals))+
 
 # Exercise 2.2 - Normalization
 
-# Z-standardization
+# Apply normalization(Z-standardization) 
 dataset_z <- as.data.frame(scale(idLoaded[-1]))
 
 # The mean of a z-score standardized variable should always be zero, and the range should be fairly compact. 
@@ -209,27 +221,61 @@ cross_validation <- function(data_set, seed) {
     
     #90% of the entire dataset is assigned to data_train
     data_train_with_labels <- data_set[-x, ]
-    data_train <- data_train_with_labels[, -1]
-    data_train_labels <- data_train_with_labels[ , 1]
+    df.train.data <- data_train_with_labels[, -1]
+    df.train.labels <- data_train_with_labels[ , 1]
     
     # The rest 10% of the dataset is assigned to data_test
     data_test_with_labels <- data_set[x, ]
-    data_test <- data_test_with_labels[, -1]
+    df.test.data <- data_test_with_labels[, -1]
     data_test_labels <- data_test_with_labels[ , 1]
     
-    #Create a knn
-    data_pred <- knn(train = data_train, test = data_test, cl = data_train_labels, k = 63)
+    #Perform PCA on normalized dataset
+    pca.z <- performPCA(df.train.data)
+    
+    pr.var.z <- calculateExplainedVariance(pca.z)
+    pve.z <- calculatePropOfVariance(pr.var.z)
+    
+    # The number of PC to include
+    in_pc <- cumsum(pve.z) <= 0.8
+    
+    # Create the new training set based using pcq
+    df.train.p <- predict(pca.z, newdata = df.train.data)[, in_pc]
+    
+    # Create the new test set based using pca
+    df.test.p <- predict(pca.z, newdata = df.test.data)[, in_pc]
+    
+    # KNN on the new dataset
+    start_time <- Sys.time()
+    test.preds.pca <- knn(train = df.train.p, test = df.test.p, cl = df.train.labels, k = 3)
+    end_time <- Sys.time()
+    
+    #Print run time
+    run_time <- end_time - start_time
+    str(run_time)
     
     #Kappa is used to compare performance in machine learning
-    kappa <- kappa2(data.frame(data_test_labels, data_pred))$value
+    kappa <- kappa2(data.frame(data_test_labels, test.preds.pca))$value
     return(kappa)
   })
   return(cross_validation_results)
 }
 
-#Dont know if broken - it takes long time
+# On normalized dataset
 cross_validation(dataset_z,423)
 
+cross_validation_and_print <- function (data_set, seed) {
+  cross_val_res <- cross_validation(data_set, seed)
+  
+  #Examine the results
+  str(cross_val_res)
+  
+  #Calculate mean of these 10 results while cross_validation_results is not a numeric vector, 
+  # i'll have to do unlist() which creates a numeric vector where i can use mean() 
+  cat(" The mean kappa statistic is:", mean(unlist(cross_val_res)))
+  cat(" The standard deviation for kappa is:", sd(unlist(cross_val_res)))
+}
+
+cross_validation_and_print(dataset_z, 423)
 
 #Exercise 2.3
 
@@ -256,3 +302,22 @@ for(i in 1:nrow(id_mat)) {
 idSmoothed <- as.data.frame(id_mat)
 idSmoothed[,1] <- factor(idLoaded) #idSmoothed holds the smoothed image data 
  
+
+#Exercise 2.4 - Reconstruction using PCA
+plotCipherImage <- function(cipher, rawDataset){
+  id_mat <-data.matrix(rawDataset, rownames.force = NA)
+  rotate <-function(x) t(apply(x,2, rev))
+  imageSize <-sqrt(ncol(id_mat) -1)
+  # Plot an image of a single cipher - To change the cipher to plot, change the for loop range
+  for(i in 1:cipher + 1){
+    rotated <-c(id_mat[-200+i*200+1,2:ncol(id_mat)])
+    rotated <-((rotated -min(rotated)) / (max(rotated) -min(rotated)))
+    image <-matrix(rotated,nrow = imageSize,ncol = imageSize, byrow = FALSE)
+    image <-rotate(image)
+    image( image,  zlim=c(0,1), col=gray(0:100/100) )
+  } 
+}
+
+plotCipherImage(2,idLoaded)
+
+
