@@ -371,7 +371,7 @@ plotEigen(1)
 
 # 2.4.3
 plotReconstructionCipherImage <- function(cipher, varianceProcent){
-  trunc <- pca$x[-200+(cipher+1)*200+1,cumsum(pve) < varianceProcent] %*% t(pca$rotation[,cumsum(pve) < varianceProcent])
+  trunc <- pca$x[(-200+(cipher+1)*200+1) ,cumsum(pve) < varianceProcent] %*% t(pca$rotation[,cumsum(pve) < varianceProcent])
   trunc <- scale(trunc, center = -1 * pca$center, scale=FALSE)
   id_mat <- trunc
   rotate <-function(x) t(apply(x,2, rev))
@@ -384,4 +384,41 @@ plotReconstructionCipherImage <- function(cipher, varianceProcent){
   image( image,  zlim=c(0,1), col=gray(0:100/100) )
 }
 
-plotReconstructionCipherImage(7, 0.99)
+plotReconstructionCipherImage(1, 0.99)
+
+
+# 2.4.5
+plotData <- tibble(PC = c(1:10), Cipher_0 = pca$x[46, 1:10], Cipher_1 = pca$x[256, 1:10])
+ggplot(data = plotData, aes(x = PC))+
+  geom_line(aes(y = Cipher_0, color = "Cipher 0, row 46"))+
+  geom_line(aes(y = Cipher_1, color = "Cipher 1, row 256"))
+
+meanOf <- function(rowStart, pc) {
+  data <- c()
+  for (i in c(rowStart:(rowStart + 199))){
+    data <- c(data, pca$x[i, pc])
+  }
+  return (mean(data))
+}
+
+meanOfPC <- function(rowStart, pcs) {
+  data <- c()
+  for (i in c(1:pcs)){
+    data <- c(data, meanOf(rowStart, i))
+  }
+  return (data)
+}
+
+sNm <- 200
+plotData2 <- tibble(PC = c(1:10), c_0 = meanOfPC((sNm * 0) + 1, 10), c_1 = meanOfPC((sNm * 1) + 1, 10), c_2 = meanOfPC((sNm * 2) + 1, 10), c_3 = meanOfPC((sNm * 3) + 1, 10), c_4 = meanOfPC((sNm * 4) + 1, 10), c_5 = meanOfPC((sNm * 5) + 1, 10), c_6 = meanOfPC((sNm * 6) + 1, 10), c_7 = meanOfPC((sNm * 7) + 1, 10), c_8 = meanOfPC((sNm * 8) + 1, 10), c_9 = meanOfPC((sNm * 9) + 1, 10))
+ggplot(data = plotData2, aes(x = PC))+
+  geom_line(aes(y = c_0, color = "Cipher 0, mean"))+
+  geom_line(aes(y = c_1, color = "Cipher 1, mean"))+
+  geom_line(aes(y = c_2, color = "Cipher 2, mean"))+
+  geom_line(aes(y = c_3, color = "Cipher 3, mean"))+
+  geom_line(aes(y = c_4, color = "Cipher 4, mean"))+
+  geom_line(aes(y = c_5, color = "Cipher 5, mean"))+
+  geom_line(aes(y = c_6, color = "Cipher 6, mean"))+
+  geom_line(aes(y = c_7, color = "Cipher 7, mean"))+
+  geom_line(aes(y = c_8, color = "Cipher 8, mean"))+
+  geom_line(aes(y = c_9, color = "Cipher 9, mean"))
