@@ -317,13 +317,19 @@ for(i in 1:nrow(id_mat)) {
 idSmoothed <- as.data.frame(id_mat)
 idSmoothed[,1] <- factor(idLoaded) #idSmoothed holds the smoothed image data 
 
-#
+#Cross-validation with normalization before PCA is done on dataset
+cross_validation_and_print(idSmoothed, 423, beforePCA = TRUE)
+
+#Cross-validation with normalization after PCA is done on dataset
 cross_validation_and_print(idSmoothed, 423, beforePCA = FALSE)
  
 #####################
 ## Exercise 2.4 - Reconstruction using PCA
 #####################
 
+# 2.4.1 - This task is about reconstructing data using PCA. 
+# First using these functions we can plot an image of a single cipher 
+# ( for plotting images do not convert idto data frame ):
 plotCipherImage <- function(cipher, rawDataset){
   id_mat <-data.matrix(rawDataset, rownames.force = NA)
   rotate <-function(x) t(apply(x,2, rev))
@@ -340,4 +346,12 @@ plotCipherImage <- function(cipher, rawDataset){
 
 plotCipherImage(2,idLoaded)
 
+# 2.4.2. - Plot the first 10 eigenvectors/loadingvectors as images. Can you describe what you see?
+plot(pca$rotation[,4])
+
+# 2.4.3 - Plot a reconstruction of the images you displayed in 2.4.1 using all PC’s. 
+# This can be done by multiplying the loadings with the scores and adding the removed centering.
+trunc <-pca$x[1,cumsum(Proportion) < 0.99] %*%
+t(pca$rotation[,cumsum(Proportion) < 0.99])
+trunc <-scale(trunc, center = -1 * pca$center, scale=FALSE)
 
