@@ -325,13 +325,19 @@ for(i in 1:nrow(id_mat)) {
 idSmoothed <- as.data.frame(id_mat)
 idSmoothed[,1] <- factor(idLoaded) #idSmoothed holds the smoothed image data 
 
-#
+#Cross-validation with normalization before PCA is done on dataset
+cross_validation_and_print(idSmoothed, 423, beforePCA = TRUE)
+
+#Cross-validation with normalization after PCA is done on dataset
 cross_validation_and_print(idSmoothed, 423, beforePCA = FALSE)
  
 #####################
 ## Exercise 2.4 - Reconstruction using PCA
 #####################
 
+# 2.4.1 - This task is about reconstructing data using PCA. 
+# First using these functions we can plot an image of a single cipher 
+# ( for plotting images do not convert idto data frame ):
 plotCipherImage <- function(cipher, rawDataset){
   id_mat <-data.matrix(rawDataset, rownames.force = NA)
   rotate <-function(x) t(apply(x,2, rev))
@@ -348,7 +354,7 @@ plotCipherImage <- function(cipher, rawDataset){
 
 plotCipherImage(2,idLoaded)
 
-## 2.4.2
+# 2.4.2. - Plot the first 10 eigenvectors/loadingvectors as images. Can you describe what you see?
 plotEigen <- function (num) {
   id_mat <-data.matrix(pca$rotation[,num], rownames.force = NA)
   rotate <-function(x) t(apply(x,2, rev))
@@ -363,15 +369,7 @@ plotEigen <- function (num) {
 
 plotEigen(1)
 
-
-
-
-rotated <-c(id_mat[])
-rotated <-((rotated -min(rotated)) / (max(rotated) -min(rotated)))
-image <-matrix(rotated ,nrow = imageSize ,ncol = imageSize, byrow = FALSE)
-image <-rotate(image)
-image( image,  zlim=c(0,1), col=gray(0:100/100) )
-
+# 2.4.3
 plotReconstructionCipherImage <- function(cipher, varianceProcent){
   trunc <- pca$x[-200+(cipher+1)*200+1,cumsum(pve) < varianceProcent] %*% t(pca$rotation[,cumsum(pve) < varianceProcent])
   trunc <- scale(trunc, center = -1 * pca$center, scale=FALSE)
@@ -387,4 +385,3 @@ plotReconstructionCipherImage <- function(cipher, varianceProcent){
 }
 
 plotReconstructionCipherImage(7, 0.99)
-
