@@ -211,8 +211,13 @@ dataset_z <- as.data.frame(scale(idLoaded[-1]))
 summary(dataset_z$V2)
 
 #  apply kNN with 10 fold cross-validation (10 runs, 90% training and 10% test set).
-cross_validation <- function(data_set, seed) {
+cross_validation <- function(data_set, seed, beforePCA) {
   set.seed(seed)
+  #Normalize data before PCA
+  if (beforePCA) {
+    data_set <- as.data.frame(scale(data_set[-1])) 
+  }
+  
   folds <-createFolds(data_set[, 1], k = 10) #data_set$X1
   
   #lapply() returns a list of the same length as X, each element of which is the result 
@@ -240,9 +245,13 @@ cross_validation <- function(data_set, seed) {
     
     # Create the new training set based using pcq
     df.train.p <- predict(pca.z, newdata = df.train.data)[, in_pc]
-    
     # Create the new test set based using pca
     df.test.p <- predict(pca.z, newdata = df.test.data)[, in_pc]
+    
+    if(!beforePCA){
+      df.train.p <- as.data.frame(scale(df.train.p)) 
+      df.test.p <- as.data.frame(scale(df.test.p))
+    }
     
     # KNN on the new dataset
     start_time <- Sys.time()
@@ -260,11 +269,8 @@ cross_validation <- function(data_set, seed) {
   return(cross_validation_results)
 }
 
-# On normalized dataset
-cross_validation(dataset_z,423)
-
-cross_validation_and_print <- function (data_set, seed) {
-  cross_val_res <- cross_validation(data_set, seed)
+cross_validation_and_print <- function (data_set, seed, beforePCA) {
+  cross_val_res <- cross_validation(data_set, seed, beforePCA)
   
   #Examine the results
   str(cross_val_res)
@@ -275,7 +281,7 @@ cross_validation_and_print <- function (data_set, seed) {
   cat(" The standard deviation for kappa is:", sd(unlist(cross_val_res)))
 }
 
-cross_validation_and_print(dataset_z, 423)
+cross_validation_and_print(idLoaded, 423, beforePCA = FALSE)
 
 #Exercise 2.3
 
