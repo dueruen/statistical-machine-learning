@@ -4,6 +4,7 @@ library(gmodels)
 library(tibble)
 library(ggplot2)
 library(caret)
+library (ROCR)
 
 ##
 # Shows a lot of information about knn results
@@ -48,12 +49,12 @@ run_kmeans_and_knn <- function(train_data, train_data_label, test_data, test_dat
 }
 
 find_best_center <- function() {
-  dataSet <- do.call(rbind, idList[1:1]) 
-  dataSet <- as.data.frame(dataSet)
-  dataSet[,1] <- factor(dataSet[,1])
+  findData <- do.call(rbind, idList[1:1]) 
+  findData <- as.data.frame(findData)
+  findData[,1] <- factor(findData[,1])
   
-  id_train <- dataSet[,-1]
-  id_train_labels <- dataSet[,1]
+  id_train <- findData[,-1]
+  id_train_labels <- findData[,1]
   
   test_dataSet <- do.call(rbind, idList[2:2]) 
   test_dataSet <- as.data.frame(test_dataSet)
