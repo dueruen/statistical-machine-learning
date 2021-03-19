@@ -5,6 +5,7 @@ library(tibble)
 library(ggplot2)
 library(caret)
 library (ROCR)
+library (PRROC)
 
 ##
 # Shows a lot of information about knn results
@@ -129,3 +130,78 @@ res <- as.data.frame(res)
 
 boxplot(res[[1]], res[[3]], names=c("with kmeans","raw data"))
 boxplot(res[[2]], res[[4]], names=c("with kmeans","raw data"))
+
+
+#####################
+## Exercise 3.3: Evaluation methods of k-NN
+#####################
+dataset_shuffle <-dataSet[sample(nrow(dataSet)),]
+
+samp.train <- sample(nrow(dataSet), nrow(dataSet)*0.8)
+data_train_with_labels <- dataSet[samp.train,,]
+data_train <- data_train_with_labels[, -1]
+data_train_labels <- data_train_with_labels[ , 1]
+
+# The rest 10% of the dataset is assigned to data_test
+data_test_with_labels <- dataSet[sample(setdiff(seq(nrow(dataSet)), samp.train), length(setdiff(seq(nrow(dataSet)), samp.train)) * 0.2),,]
+data_test <- data_test_with_labels[, -1]
+data_test_labels <- data_test_with_labels[ , 1]
+
+###
+# 3.3.1
+###
+allRec <- c()
+allPre <- c()
+allF1 <- c()
+for(k in 1:13) {
+  partRec <- c()
+  partPre <- c()
+  partF1 <- c()
+  for(i in 1:k) {
+    
+    id_test_pred <- knn(train = data_train, test = data_test, cl = data_train_labels, k=k, l=i)# this is the task about: train 'l' up to 'k'
+
+    cf <- confusionMatrix(data_test_labels, id_test_pred)
+    
+    #print( sum(diag(cf$table))/sum(cf$table) )
+    
+    trupL  <- sum(diag(cf$table))
+    falpL <- sum(colSums(cf$table) - diag(cf$table))
+    
+    rec <-  trupL/length(id_test_pred)
+    
+    pre <- trupL/(trupL + falpL)
+    
+    f1 <- (2 * ((pre * rec) / (pre + rec)))
+
+    partRec[[i]] <- rec
+    partPre[[i]] <- pre
+    partF1[[i]] <- f1
+  }
+  allRec[[k]] <-partRec
+  allPre[[k]] <-partPre
+  allF1[[k]] <-partF1
+}
+
+plot(allRec[[1]], allPre[[1]], type="b", col=1, lwd=1, pch=1, xlab="Recall", ylab="Precision",ylim=range(0.91,1),xlim=range(0.6,0.96))
+plot_labels <- c("k = 1")
+for (i in 2:13) {
+  lines(allRec[[i]], allPre[[i]], type="b", col=i, lwd=1, pch=i)
+  plot_labels[i] <- paste("k = ", i, sep = "")
+}
+title("Precision-recall curves for k 1 to 13")
+legend("bottomleft",plot_labels, lwd=c(1), col=c(1:13), pch=c(1:13), y.intersp=1)
+
+###
+# 3.3.2
+###
+maxF1s = c()
+for (i in 1:13) {
+  maxF1s[[i]] <- max(unlist(allF1[[i]]))
+}
+plot(c(1:13), maxF1s, type="b", col=1, lwd=1, pch=1, xlab="K value", ylab="Max F1")
+title("Maximum F1 values for each k")
+
+# https://stackoverflow.com/questions/8499361/easy-way-of-counting-precision-recall-and-f1-score-in-r/8502026
+# https://stackoverflow.com/questions/40783331/rocr-error-format-of-predictions-is-invalid
+# https://stackoverflow.com/questions/61955696/calculating-true-false-positive-and-true-false-negative-values-from-matrix-in-r
