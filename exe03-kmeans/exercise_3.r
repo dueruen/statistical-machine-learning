@@ -131,6 +131,44 @@ res <- as.data.frame(res)
 boxplot(res[[1]], res[[3]], names=c("with kmeans","raw data"))
 boxplot(res[[2]], res[[4]], names=c("with kmeans","raw data"))
 
+###
+# 3.1.3
+# Perform K-means clustering on each cipher individually for the training data from all the 
+# available datasets ( disjunct ). Represent the training data as a number of cluster centroids and 
+# compare performance, try multiple cluster sizes.
+###
+zeroes <- data.frame()
+ones <- data.frame()
+twos <- data.frame()
+threes <- data.frame()
+fours <- data.frame()
+fives <- data.frame()
+sixes <- data.frame()
+sevens <- data.frame()
+eights <- data.frame()
+nines <- data.frame()
+
+for (i in 1:13) {
+  
+  subject <- do.call(rbind, idList[i:i]) 
+  subject <- as.data.frame(subject)
+  subject[,1] <- factor(subject[,1])
+  
+  zeroes <- rbind(subject[1:200,], zeroes)
+  ones <- rbind(subject[201:400,], ones)
+  twos <- rbind(subject[401:600,], twos)
+  threes <- rbind(subject[601:800,], threes)
+  fours <- rbind(subject[801:1000,], fours)
+  fives <- rbind(subject[1001:1200,], fives)
+  sixes <- rbind(subject[1201:1400,], sixes)
+  sevens <- rbind(subject[1401:1600,], sevens)
+  eights <- rbind(subject[1601:1800,],eights)
+  nines <- rbind(subject[1801:2000,], nines)
+
+  }
+
+#res <- run_kmeans_and_knn(id_train, id_train_labels, id_test, id_test_labels, i)
+# TODO: Get from dataframes with cipher data to format that can be passed to kmeans function
 
 #####################
 ## Exercise 3.3: Evaluation methods of k-NN
@@ -160,7 +198,7 @@ for(k in 1:13) {
   for(i in 1:k) {
     
     id_test_pred <- knn(train = data_train, test = data_test, cl = data_train_labels, k=k, l=i)# this is the task about: train 'l' up to 'k'
-
+    
     cf <- confusionMatrix(data_test_labels, id_test_pred)
     
     #print( sum(diag(cf$table))/sum(cf$table) )
@@ -173,7 +211,7 @@ for(k in 1:13) {
     pre <- trupL/(trupL + falpL)
     
     f1 <- (2 * ((pre * rec) / (pre + rec)))
-
+    
     partRec[[i]] <- rec
     partPre[[i]] <- pre
     partF1[[i]] <- f1
