@@ -5,12 +5,8 @@ library(tibble)
 library(ggplot2)
 library(caret)
 library (ROCR)
-<<<<<<< HEAD
 library(dendextend)
-
-=======
 library (PRROC)
->>>>>>> 69c2224aad64940bbe4c2f61ef53727bb532db71
 
 ##
 # Shows a lot of information about knn results
