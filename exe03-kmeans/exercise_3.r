@@ -5,6 +5,8 @@ library(tibble)
 library(ggplot2)
 library(caret)
 library (ROCR)
+library(dendextend)
+
 
 ##
 # Shows a lot of information about knn results
@@ -129,3 +131,57 @@ res <- as.data.frame(res)
 
 boxplot(res[[1]], res[[3]], names=c("with kmeans","raw data"))
 boxplot(res[[2]], res[[4]], names=c("with kmeans","raw data"))
+
+###
+# 3.2.1
+### https://www.datacamp.com/community/tutorials/hierarchical-clustering-R
+set.seed (2)
+#Get one person from the dataset, so idList[1:1] 
+one <- do.call(rbind, idList[1:1]) 
+one <- as.data.frame(one)
+one[,1] <- factor(one[,1])
+
+
+#Empty list 
+digit.list <- list()
+
+#Add each 5 instances of each digits to digit.list
+for( i in 0:9) { 
+  tmp.digit <- one[(2+(i*200)):(6 + (i*200)),]
+  digit.list <- append(digit.list, list(tmp.digit))
+}
+
+par(mfrow=c(1,3))
+#Convert digit.list to a matrix
+digit.mat <- do.call(rbind, digit.list)
+digit.mat <- as.data.frame(digit.mat)
+digit.mat[,1] <- factor(digit.mat[,1])
+
+dist_mat <- dist(digit.mat, method = 'euclidean')
+cluster.labels <- digit.mat[,1]
+
+# Hierarchical cluster analysis on a set of dissimilarities and methods for analyzing it.
+hclust.avg <- hclust(dist_mat, method = 'average')
+cut_avg <- cutree(hclust.avg, k = 10)
+plot(hclust.avg, labels = cluster.labels, 
+     main="HC with 5 instances of each digit for one person", xlab="", sub="",ylab="")
+#Color boxes
+rect.hclust(hclust.avg , k = 6, border = 2:6)
+
+
+###
+# 3.2.2 - Use K-Means clustering to compress each digit into 5 clusters, as done in 3.1.1, 
+# and perform hierarchical clustering to show a low level dendrogram of this ( one person )
+###
+set.seed (2)
+#Perform Perform k-means clustering on a data matrix.
+clusterData <- kmeans(dist_mat, centers = 5) 
+#Take the cluster data and compute matrix
+cluster <- dist(clusterData$cluster)
+hc.average <- hclust(cluster, method = 'average')
+
+plot(hc.average, labels = cluster.labels, 
+     main="HC with centroids for each digit for one person", xlab="", sub="",ylab="")
+#Color boxes
+rect.hclust(hc.average , k = 5, border = 2:6)
+
