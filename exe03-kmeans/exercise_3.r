@@ -118,7 +118,9 @@ cross_validation_kmeans_and_knn <- function(data_set, seed) {
     
     accuracy = mean(data_pred == data_test_labels)
     
-    return (c(kmeans_res[1], kmeans_res[2], accuracy, run_time))
+    crossTable <- CrossTable(x = data_test_labels, y = data_pred, prop.chisq = FALSE)
+    
+    return (c(kmeans_res[1], kmeans_res[2], accuracy, run_time, crossTable))
     
   })
   return(cross_validation_results)
@@ -202,10 +204,11 @@ cluster.labels <- digit.mat[,1]
 # Hierarchical cluster analysis on a set of dissimilarities and methods for analyzing it.
 hclust.avg <- hclust(dist_mat, method = 'average')
 cut_avg <- cutree(hclust.avg, k = 10)
+cut_avg
 plot(hclust.avg, labels = cluster.labels, 
      main="HC with 5 instances of each digit for one person", xlab="", sub="",ylab="")
 #Color boxes
-rect.hclust(hclust.avg , k = 6, border = 2:6)
+rect.hclust(hclust.avg , k = 10, border = 2:6)
 
 
 #####################
