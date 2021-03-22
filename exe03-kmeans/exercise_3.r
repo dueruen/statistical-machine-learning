@@ -165,9 +165,26 @@ for (i in 1:13) {
   eights <- rbind(subject[1601:1800,],eights)
   nines <- rbind(subject[1801:2000,], nines)
 
-  }
+}
 
-#res <- run_kmeans_and_knn(id_train, id_train_labels, id_test, id_test_labels, i)
+
+zeroes_train_data <- zeroes[1:2080,]
+zeroes_test_data <- zeroes[2081:2600,]
+
+zeroes_train <- zeroes_train_data[,-1]
+zeroes_train_labels <- zeroes_train_data[,1]
+
+
+
+test_dataSet <- do.call(rbind, zeroes_test_data) 
+test_dataSet <- as.data.frame(test_dataSet)
+test_dataSet[,1] <- factor(test_dataSet[,1])
+
+zeroes_test <- test_dataSet[,-1]
+zeroes_test_labels <- test_dataSet[,1]
+
+res <- run_kmeans_and_knn(zeroes_train, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
+#res <- run_kmeans_and_knn(zeroes_train, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
 # TODO: Get from dataframes with cipher data to format that can be passed to kmeans function
 
 
