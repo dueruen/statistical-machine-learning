@@ -176,16 +176,10 @@ zeroes_test_data <- zeroes[2081:2600,]
 zeroes_train <- zeroes_train_data[,-1]
 zeroes_train_labels <- zeroes_train_data[,1]
 
+zeroes_test <- zeroes_test_data[,-1]
+zeroes_test_labels <- zeroes_test_data[,1]
 
-
-test_dataSet <- do.call(rbind, zeroes_test_data) 
-test_dataSet <- as.data.frame(test_dataSet)
-test_dataSet[,1] <- factor(test_dataSet[,1])
-
-zeroes_test <- test_dataSet[,-1]
-zeroes_test_labels <- test_dataSet[,1]
-
-res <- run_kmeans_and_knn(zeroes_train_data, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
+res <- run_kmeans_and_knn(zeroes_train, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
 #res <- run_kmeans_and_knn(zeroes_train, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
 # TODO: Get from dataframes with cipher data to format that can be passed to kmeans function
 
@@ -193,6 +187,7 @@ res <- run_kmeans_and_knn(zeroes_train_data, zeroes_train_labels, zeroes_test, z
 ## 3.2.1 - Show a low leveldendrogram containing 5 instances of each digit ( one person )
 ## https://www.datacamp.com/community/tutorials/hierarchical-clustering-R
 ##################### 
+
 set.seed (2)
 #Get one person from the dataset, so idList[1:1] 
 one <- do.call(rbind, idList[1:1]) 
