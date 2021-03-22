@@ -185,7 +185,7 @@ test_dataSet[,1] <- factor(test_dataSet[,1])
 zeroes_test <- test_dataSet[,-1]
 zeroes_test_labels <- test_dataSet[,1]
 
-res <- run_kmeans_and_knn(zeroes_train, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
+res <- run_kmeans_and_knn(zeroes_train_data, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
 #res <- run_kmeans_and_knn(zeroes_train, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
 # TODO: Get from dataframes with cipher data to format that can be passed to kmeans function
 
