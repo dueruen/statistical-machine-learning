@@ -5,6 +5,8 @@ library(tibble)
 library(ggplot2)
 library(caret)
 library (ROCR)
+library(dendextend)
+library (PRROC)
 
 ##
 # Shows a lot of information about knn results
@@ -116,7 +118,9 @@ cross_validation_kmeans_and_knn <- function(data_set, seed) {
     
     accuracy = mean(data_pred == data_test_labels)
     
-    return (c(kmeans_res[1], kmeans_res[2], accuracy, run_time))
+    crossTable <- CrossTable(x = data_test_labels, y = data_pred, prop.chisq = FALSE)
+    
+    return (c(kmeans_res[1], kmeans_res[2], accuracy, run_time, crossTable))
     
   })
   return(cross_validation_results)
@@ -130,8 +134,6 @@ res <- as.data.frame(res)
 boxplot(res[[1]], res[[3]], names=c("with kmeans","raw data"))
 boxplot(res[[2]], res[[4]], names=c("with kmeans","raw data"))
 
-
-###
 # 3.1.3
 # Perform K-means clustering on each cipher individually for the training data from all the 
 # available datasets ( disjunct ). Represent the training data as a number of cluster centroids and 
@@ -187,6 +189,133 @@ res <- run_kmeans_and_knn(zeroes_train, zeroes_train_labels, zeroes_test, zeroes
 #res <- run_kmeans_and_knn(zeroes_train, zeroes_train_labels, zeroes_test, zeroes_test_labels, 6)
 # TODO: Get from dataframes with cipher data to format that can be passed to kmeans function
 
+#####################
+## 3.2.1 - Show a low leveldendrogram containing 5 instances of each digit ( one person )
+## https://www.datacamp.com/community/tutorials/hierarchical-clustering-R
+##################### 
+set.seed (2)
+#Get one person from the dataset, so idList[1:1] 
+one <- do.call(rbind, idList[1:1]) 
+one <- as.data.frame(one)
+one[,1] <- factor(one[,1])
 
 
+#Empty list 
+digit.list <- list()
+
+#Add each 5 instances of each digits to digit.list
+for( i in 0:9) { 
+  tmp.digit <- one[(2+(i*200)):(6 + (i*200)),]
+  digit.list <- append(digit.list, list(tmp.digit))
+}
+
+par(mfrow=c(1,3))
+#Convert digit.list to a matrix
+digit.mat <- do.call(rbind, digit.list)
+digit.mat <- as.data.frame(digit.mat)
+digit.mat[,1] <- factor(digit.mat[,1])
+
+dist_mat <- dist(digit.mat, method = 'euclidean')
+cluster.labels <- digit.mat[,1]
+
+# Hierarchical cluster analysis on a set of dissimilarities and methods for analyzing it.
+hclust.avg <- hclust(dist_mat, method = 'average')
+cut_avg <- cutree(hclust.avg, k = 10)
+cut_avg
+plot(hclust.avg, labels = cluster.labels, 
+     main="HC with 5 instances of each digit for one person", xlab="", sub="",ylab="")
+#Color boxes
+rect.hclust(hclust.avg , k = 10, border = 2:6)
+
+
+#####################
+## 3.2.2 - Use K-Means clustering to compress each digit into 5 clusters, as done in 3.1.1, 
+## and perform hierarchical clustering to show a low level dendrogram of this ( one person )
+#####################
+
+set.seed (2)
+#Perform Perform k-means clustering on a data matrix.
+clusterData <- kmeans(dist_mat, centers = 5) 
+#Take the cluster data and compute matrix
+cluster <- dist(clusterData$cluster)
+hc.average <- hclust(cluster, method = 'average')
+
+plot(hc.average, labels = cluster.labels, 
+     main="HC with centroids for each digit for one person", xlab="", sub="",ylab="")
+#Color boxes
+rect.hclust(hc.average , k = 5, border = 2:6)
+
+#####################
+## Exercise 3.3: Evaluation methods of k-NN
+#####################
+dataset_shuffle <-dataSet[sample(nrow(dataSet)),]
+
+samp.train <- sample(nrow(dataSet), nrow(dataSet)*0.8)
+data_train_with_labels <- dataSet[samp.train,,]
+data_train <- data_train_with_labels[, -1]
+data_train_labels <- data_train_with_labels[ , 1]
+
+# The rest 10% of the dataset is assigned to data_test
+data_test_with_labels <- dataSet[sample(setdiff(seq(nrow(dataSet)), samp.train), length(setdiff(seq(nrow(dataSet)), samp.train)) * 0.2),,]
+data_test <- data_test_with_labels[, -1]
+data_test_labels <- data_test_with_labels[ , 1]
+
+###
+# 3.3.1
+###
+allRec <- c()
+allPre <- c()
+allF1 <- c()
+for(k in 1:13) {
+  partRec <- c()
+  partPre <- c()
+  partF1 <- c()
+  for(i in 1:k) {
+    
+    id_test_pred <- knn(train = data_train, test = data_test, cl = data_train_labels, k=k, l=i)# this is the task about: train 'l' up to 'k'
+    
+    cf <- confusionMatrix(data_test_labels, id_test_pred)
+    
+    #print( sum(diag(cf$table))/sum(cf$table) )
+    
+    trupL  <- sum(diag(cf$table))
+    falpL <- sum(colSums(cf$table) - diag(cf$table))
+    
+    rec <-  trupL/length(id_test_pred)
+    
+    pre <- trupL/(trupL + falpL)
+    
+    f1 <- (2 * ((pre * rec) / (pre + rec)))
+    
+    partRec[[i]] <- rec
+    partPre[[i]] <- pre
+    partF1[[i]] <- f1
+  }
+  allRec[[k]] <-partRec
+  allPre[[k]] <-partPre
+  allF1[[k]] <-partF1
+}
+
+plot(allRec[[1]], allPre[[1]], type="b", col=1, lwd=1, pch=1, xlab="Recall", ylab="Precision",ylim=range(0.91,1),xlim=range(0.6,0.96))
+plot_labels <- c("k = 1")
+for (i in 2:13) {
+  lines(allRec[[i]], allPre[[i]], type="b", col=i, lwd=1, pch=i)
+  plot_labels[i] <- paste("k = ", i, sep = "")
+}
+title("Precision-recall curves for k 1 to 13")
+legend("bottomleft",plot_labels, lwd=c(1), col=c(1:13), pch=c(1:13), y.intersp=1)
+
+###
+# 3.3.2
+###
+maxF1s = c()
+for (i in 1:13) {
+  maxF1s[[i]] <- max(unlist(allF1[[i]]))
+}
+plot(c(1:13), maxF1s, type="b", col=1, lwd=1, pch=1, xlab="K value", ylab="Max F1")
+title("Maximum F1 values for each k")
+
+# https://stackoverflow.com/questions/8499361/easy-way-of-counting-precision-recall-and-f1-score-in-r/8502026
+# https://stackoverflow.com/questions/40783331/rocr-error-format-of-predictions-is-invalid
+# https://stackoverflow.com/questions/61955696/calculating-true-false-positive-and-true-false-negative-values-from-matrix-in-r
 
