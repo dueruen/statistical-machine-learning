@@ -31,6 +31,7 @@ dataset.oneperson <- as.data.frame(dataset.oneperson)
 dataset.oneperson[,1] <- factor(dataset.oneperson[,1])
 dataset.oneperson.no_labels <- dataset.oneperson[,-1]
 
+#Create PCA but with only with 5 principal components
 pca.5 <- performPCA(dataset.oneperson.no_labels, 5)
 
 #Transform data
@@ -60,8 +61,11 @@ computeInformationGain <- function() {
 df.transformed.dataset <- transform.data(dataset.oneperson, pca.5)
 datanew <- cbind(df.transformed.dataset, dataset.oneperson[,1]) # 'df.transformed.dataset' is a dataframe
 datanew$States <- factor(datanew[,6])
+
+#Create decision tree and limit the depth.
 tree <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, 
               method = "class", control = list(maxdepth = 5))
+#Plot decision tree
 rpart.plot(tree, box.palette = 0) #Box palette for ignoring error
 
 ###########
@@ -111,8 +115,21 @@ cross_validation_without_pca(idLoaded,123)
 ## Create a Random Forest classifier and evaluate it using cross validation.
 ## Discuss the critical parameters of “randomForest”(e.g., number and depth of trees)
 ###########
+
+#Take one person and transform dataset and add States column i think?
+df.transformed.dataset <- transform.data(dataset.oneperson, pca.5)
+datanew <- cbind(df.transformed.dataset, dataset.oneperson[,1]) # 'df.transformed.dataset' is a dataframe
+datanew$States <- factor(datanew[,6])
+
+# Create Random Forest classifer. Uses single person. This should be correct.
 model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, ntree=100)
 
+# Logging to get to know random forest
+model
+# Using the importance() function, we can view the importance of each variable.
+importance(model)
+
+# WIP
 cross_validation_random_forest <- function(data_set, model, seed) {
   set.seed(seed)
   folds <-createFolds(data_set[, 1], k = 10) #data_set$X1
@@ -130,7 +147,7 @@ cross_validation_random_forest <- function(data_set, model, seed) {
     data_test_labels <- data_test_with_labels[ , 1]
     
     
-    #Predict random vs. test set
+    #Predict random forest vs. test set
     start_time <- Sys.time()
     data_pred <-predict(model,data_test)
     end_time <- Sys.time()
