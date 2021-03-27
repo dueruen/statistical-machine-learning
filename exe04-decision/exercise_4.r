@@ -1,5 +1,8 @@
 library(rpart)
+library(rpart.plot) #SKAL INSTALLERES
 library(stats)
+library(randomForest)
+library(caret)
 
 #Load the dataset
 load("idList-cornered-100-2021.Rdata")
@@ -17,12 +20,32 @@ dataset_no_labels <- idLoaded[,-1]
 ## Compute the optimal decision point for the first 5 PCAs of a dataset (e.g. a single person) and 
 ## compute the information gain associated to it (plot 5 graphs, one for each component, and show the highest information gain)
 #########
-performPCA <- function(dataset){
-  pca <- prcomp(dataset,scale=FALSE)
+performPCA <- function(dataset, pcaCount){
+  pca <- prcomp(dataset,scale=FALSE, rank. = pcaCount )
   return (pca)
 }
 
-pca <- performPCA(dataset_no_labels)
+#take one person from the dataset
+dataset.oneperson <- do.call(rbind,idList[1:1])
+dataset.oneperson <- as.data.frame(dataset.oneperson)
+dataset.oneperson[,1] <- factor(dataset.oneperson[,1])
+dataset.oneperson.no_labels <- dataset.oneperson[,-1]
+
+pca.5 <- performPCA(dataset.oneperson.no_labels, 5)
+
+#Transform data
+transform.data <- function(dataset, pca){
+  transformed.dataset <- predict(pca, newdata = dataset)
+  # Convert to transformed dataset to dataframe
+  df.transformed.dataset <- as.data.frame(transformed.dataset) 
+  return (df.transformed.dataset)
+}
+
+
+
+decisionPoint <- function(dataset){
+  
+}
 
 computeInformationGain <- function() { 
     
@@ -31,12 +54,105 @@ computeInformationGain <- function() {
 
 
 ###########
-## 4.1.2 
+## 4.1.2 - DONE
 ## Compute a decision tree for the digit classification and visualize it.
 ###########
+df.transformed.dataset <- transform.data(dataset.oneperson, pca.5)
+datanew <- cbind(df.transformed.dataset, dataset.oneperson[,1]) # 'df.transformed.dataset' is a dataframe
+datanew$States <- factor(datanew[,6])
+tree <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, 
+              method = "class", control = list(maxdepth = 5))
+rpart.plot(tree, box.palette = 0) #Box palette for ignoring error
 
-# Code from Zhuoqi, which I think might actually be the entire solution?
-datanew <- cbind(id_pca_first_5, id[,1]) # 'id_pca_first_5' is a dataframe
-datanew$States <-factor(datanew[,6])
-tree <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, method = "class")
-rpart.plot(tree)
+###########
+## 4.1.3 - WORK IN PROGRESS NOT DONE!
+## Using the full data set(i.e. dataset from multiple people), 
+## evaluate a trained decision tree using cross validation. 
+## Try to train a tree with PCA, and without PCA(raw data).Discuss the important parameters.
+###########
+
+cross_validation_without_pca <- function(data_set, seed) {
+  set.seed(seed)
+  folds <-createFolds(data_set[, 1], k = 10) #data_set$X1
+  
+  cross_validation_results <- lapply(folds, function(x) {
+    
+    #90% of the entire dataset is assigned to data_train
+    data_train_with_labels <- data_set[-x, ]
+    data_train <- data_train_with_labels[, -1]
+    data_train_labels <- data_train_with_labels[ , 1]
+    
+    # The rest 10% of the dataset is assigned to data_test
+    data_test_with_labels <- data_set[x, ]
+    data_test <- data_test_with_labels[, -1]
+    data_test_labels <- data_test_with_labels[ , 1]
+    
+    #Predict random vs. test set
+    start_time <- Sys.time()
+    data_pred <-predict(tree, data_test, type = "class")
+    end_time <- Sys.time()
+    
+    run_time <- end_time - start_time
+    
+    accuracy = mean(data_pred == data_test_labels)
+    
+    #crossTable <- CrossTable(x = data_test_labels, y = data_pred, prop.chisq = FALSE)
+    
+    return (c(accuracy, run_time))
+    
+  })
+  return(cross_validation_results)
+}
+
+cross_validation_without_pca(idLoaded,123)
+
+###########
+## 4.2.1 - Random forests WORK IN PROGRESS
+## Create a Random Forest classifier and evaluate it using cross validation.
+## Discuss the critical parameters of “randomForest”(e.g., number and depth of trees)
+###########
+model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, ntree=100)
+
+cross_validation_random_forest <- function(data_set, model, seed) {
+  set.seed(seed)
+  folds <-createFolds(data_set[, 1], k = 10) #data_set$X1
+  
+  cross_validation_results <- lapply(folds, function(x) {
+    
+    #90% of the entire dataset is assigned to data_train
+    data_train_with_labels <- data_set[-x, ]
+    data_train <- data_train_with_labels[, -1]
+    data_train_labels <- data_train_with_labels[ , 1]
+    
+    # The rest 10% of the dataset is assigned to data_test
+    data_test_with_labels <- data_set[x, ]
+    data_test <- data_test_with_labels[, -1]
+    data_test_labels <- data_test_with_labels[ , 1]
+    
+    
+    #Predict random vs. test set
+    start_time <- Sys.time()
+    data_pred <-predict(model,data_test)
+    end_time <- Sys.time()
+    
+    run_time <- end_time - start_time
+    
+    accuracy = mean(data_pred == data_test_labels)
+    
+    #crossTable <- CrossTable(x = data_test_labels, y = data_pred, prop.chisq = FALSE)
+    
+    return (c(accuracy, run_time))
+    
+  })
+  return(cross_validation_results)
+}
+
+cross_validation_random_forest(datanew,model,2)
+
+
+
+
+
+
+
+
