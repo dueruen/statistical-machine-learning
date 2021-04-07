@@ -42,14 +42,37 @@ transform.data <- function(dataset, pca){
   return (df.transformed.dataset)
 }
 
+#Calculate entropy
+entropy <- function(dataset){
+  fullSum <- 0
+  for (i in (0:9)) {
+    if(nrow(dataset) > 0){
+      pi <- nrow(dataset[dataset[,1] == i , ] / nrow(dataset))
+    }else {
+      pi <- 0
+    }
+    
+    if(pi > 0){
+      fullSum <- fullSum - pi * log2(pi)
+    }
+  }
+  return(fullSum)
+}
 
-
-decisionPoint <- function(dataset){
-  
+decisionPoint <- function(id_pca){
+  id_pca1 <- id_pca$x[, 1]
+  Pts <- seq(min(id_pca1), max(id_pca1), length.out=200)
+  for( splitP in (1:200)){
+    S1 <- id[ id_pca1 < Pts[splitP], ] # Perform splits
+    S2 <- id[ id_pca1 >= Pts[splitP], ]
+    s1 <- nrow(S1)
+    s2 <- nrow(S2)
+    ent <- ( s1 * entropy(S1) )/(s1 + s2) + ( s2 * entropy(S2) )/(s1 + s2) # Calculate entropy
+    entList[splitP] <- entBefore - ent # Information gain is calculated
+  }
 }
 
 computeInformationGain <- function() { 
-    
 }
 
 
@@ -165,11 +188,3 @@ cross_validation_random_forest <- function(data_set, model, seed) {
 }
 
 cross_validation_random_forest(datanew,model,2)
-
-
-
-
-
-
-
-
