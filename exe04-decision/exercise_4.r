@@ -4,6 +4,8 @@ library(stats)
 library(randomForest)
 library(caret)
 
+
+
 #Load the dataset
 load("idList-cornered-100-2021.Rdata")
 
@@ -69,13 +71,12 @@ tree <- rpart(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew,
 rpart.plot(tree, box.palette = 0) #Box palette for ignoring error
 
 ###########
-## 4.1.3 - WORK IN PROGRESS NOT DONE!
+## 4.1.3 - DONE
 ## Using the full data set(i.e. dataset from multiple people), 
 ## evaluate a trained decision tree using cross validation. 
 ## Try to train a tree with PCA, and without PCA(raw data).Discuss the important parameters.
 ###########
-
-cross_validation_without_pca <- function(data_set, seed) {
+cross_validation_with_pca <- function(data_set, seed) {
   set.seed(seed)
   folds <-createFolds(data_set[, 1], k = 10) #data_set$X1
   
@@ -91,14 +92,28 @@ cross_validation_without_pca <- function(data_set, seed) {
     data_test <- data_test_with_labels[, -1]
     data_test_labels <- data_test_with_labels[ , 1]
     
-    #Predict random vs. test set
+    pca.5 <- performPCA(data_train, 5)
+    
+    df.transformed.dataset <- transform.data(data_train_with_labels, pca.5)
+    datanew <- cbind(df.transformed.dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew$States <- factor(datanew[,6])
+    
     start_time <- Sys.time()
-    data_pred <-predict(tree, data_test, type = "class")
+    tree <- rpart(States ~ ., data = datanew, 
+                  method = "class", control = list(maxdepth = 5))
     end_time <- Sys.time()
+    
+    #Predict random vs. test set
+    df.transformed.test_dataset <- transform.data(data_test_with_labels, pca.5)
+    datanew_test <- cbind(df.transformed.test_dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew_test$States <- factor(datanew_test[,6])
+    
+    data_pred <-predict(tree, datanew_test, type = "class")
     
     run_time <- end_time - start_time
     
     accuracy = mean(data_pred == data_test_labels)
+    #accuracy = 1
     
     #crossTable <- CrossTable(x = data_test_labels, y = data_pred, prop.chisq = FALSE)
     
@@ -108,7 +123,62 @@ cross_validation_without_pca <- function(data_set, seed) {
   return(cross_validation_results)
 }
 
-cross_validation_without_pca(idLoaded,123)
+cross_validation_without_pca <- function(data_set, seed) {
+  set.seed(seed)
+  folds <-createFolds(data_set[, 1], k = 10) #data_set$X1
+  
+  cross_validation_results <- lapply(folds, function(x) {
+    
+    #90% of the entire dataset is assigned to data_train
+    data_train_with_labels <- data_set[-x, ]
+    data_train <- data_train_with_labels[, -1]
+    data_train_labels <- data_train_with_labels[ , 1]
+    #cat(nrow(data_train_with_labels))
+    #cat(" ")
+    #cat(data_train_with_labels$V1[1])
+    
+    # The rest 10% of the dataset is assigned to data_test
+    data_test_with_labels <- data_set[x, ]
+    data_test <- data_test_with_labels[, -1]
+    data_test_labels <- data_test_with_labels[ , 1]
+    #cat(nrow(data_test_with_labels))
+    #cat(" ")
+    #cat(data_test_with_labels$V1[1])
+    #cat("\n")
+    
+    start_time <- Sys.time()
+    tree <- rpart(V1 ~ ., data = data_train_with_labels, 
+                     method = "class", control = list(maxdepth = 5))
+    end_time <- Sys.time()
+    
+    #Predict random vs. test set
+    data_pred <-predict(tree, data_test, type = "class")
+    
+    run_time <- end_time - start_time
+    
+    accuracy = mean(data_pred == data_test_labels)
+    #accuracy = 1
+    
+    #crossTable <- CrossTable(x = data_test_labels, y = data_pred, prop.chisq = FALSE)
+    
+    return (c(accuracy, run_time))
+    
+  })
+  return(cross_validation_results)
+}
+res_cross_validation_with_pca <- cross_validation_with_pca(dataset_shuffle, 123)
+
+res_cross_validation_without_pca <- cross_validation_without_pca(dataset_shuffle, 123)
+
+res_with_pca <- do.call(rbind, res_cross_validation_with_pca[])
+res_with_pca <- as.data.frame(res_with_pca)
+
+res_withOut_pca <- do.call(rbind, res_cross_validation_without_pca[])
+res_withOut_pca <- as.data.frame(res_withOut_pca)
+
+boxplot(res_with_pca[[1]], res_withOut_pca[[1]], names=c("Using first 5 PCA's","Raw data"), main="Accuracy")
+boxplot(res_with_pca[[2]], res_withOut_pca[[2]], names=c("Using first 5 PCA's","Raw data"), main="Run time in s")
+
 
 ###########
 ## 4.2.1 - Random forests WORK IN PROGRESS
