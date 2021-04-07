@@ -22,19 +22,11 @@ dataset_no_labels <- idLoaded[,-1]
 ## Compute the optimal decision point for the first 5 PCAs of a dataset (e.g. a single person) and 
 ## compute the information gain associated to it (plot 5 graphs, one for each component, and show the highest information gain)
 #########
+
 performPCA <- function(dataset, pcaCount){
-  pca <- prcomp(dataset,scale=FALSE, rank. = pcaCount )
+  pca <- prcomp(dataset,scale=FALSE, rank. = pcaCount)
   return (pca)
 }
-
-#take one person from the dataset
-dataset.oneperson <- do.call(rbind,idList[1:1])
-dataset.oneperson <- as.data.frame(dataset.oneperson)
-dataset.oneperson[,1] <- factor(dataset.oneperson[,1])
-dataset.oneperson.no_labels <- dataset.oneperson[,-1]
-
-#Create PCA but with only with 5 principal components
-pca.5 <- performPCA(dataset.oneperson.no_labels, 5)
 
 #Transform data
 transform.data <- function(dataset, pca){
@@ -62,22 +54,40 @@ entropy <- function(dataset){
 }
 
 decisionPoint <- function(id_pca){
-  id_pca1 <- id_pca$x[, 1]
-  entBefore <- entropy(id_pca1)
-  Pts <- seq(min(id_pca1), max(id_pca1), length.out=200)
+  entList <- c()
+  #id_pca1 <- id_pca$x[, 1]
+  entBefore <- entropy(dataset.oneperson.no_labels)
+  Pts <- seq(min(id_pca), max(id_pca), length.out=200)
   for( splitP in (1:200)){
-    S1 <- id[ id_pca1 < Pts[splitP], ] # Perform splits
-    S2 <- id[ id_pca1 >= Pts[splitP], ]
+    S1 <- dataset.oneperson.no_labels[ id_pca < Pts[splitP], ] # Perform splits
+    S2 <- dataset.oneperson.no_labels[ id_pca >= Pts[splitP], ]
     s1 <- nrow(S1)
     s2 <- nrow(S2)
     ent <- ( s1 * entropy(S1) )/(s1 + s2) + ( s2 * entropy(S2) )/(s1 + s2) # Calculate entropy
     entList[splitP] <- entBefore - ent # Information gain is calculated
   }
+  return(entList)
 }
 
-computeInformationGain <- function() { 
+#take one person from the dataset
+dataset.oneperson <- do.call(rbind,idList[1:1])
+dataset.oneperson <- as.data.frame(dataset.oneperson)
+dataset.oneperson[,1] <- factor(dataset.oneperson[,1])
+dataset.oneperson.no_labels <- dataset.oneperson[,-1]
+
+#Perform PCA but with only with 5 principal components
+pca.5 <- performPCA(dataset.oneperson.no_labels, 5)
+
+pca1 <- pca.5$x[, 1]
+summary(pca1)
+
+
+for( i in (1:5)) { 
+  pca_i <- pca.5$x[, i]
+  infoGainList <- decisionPoint(pca_i)
 }
 
+infoGainList <- decisionPoint(pca.5)
 
 
 ###########
