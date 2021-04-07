@@ -61,6 +61,7 @@ entropy <- function(dataset){
 
 decisionPoint <- function(id_pca){
   id_pca1 <- id_pca$x[, 1]
+  entBefore <- entropy(id_pca1)
   Pts <- seq(min(id_pca1), max(id_pca1), length.out=200)
   for( splitP in (1:200)){
     S1 <- id[ id_pca1 < Pts[splitP], ] # Perform splits
