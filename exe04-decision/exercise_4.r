@@ -17,6 +17,12 @@ idLoaded[,1] <- factor(idLoaded[,1])
 # Remove factor column
 dataset_no_labels <- idLoaded[,-1]
 
+#take one person from the dataset
+dataset.oneperson <- do.call(rbind,idList[1:1])
+dataset.oneperson <- as.data.frame(dataset.oneperson)
+dataset.oneperson[,1] <- factor(dataset.oneperson[,1])
+dataset.oneperson.no_labels <- dataset.oneperson[,-1]
+
 #########
 ## 4.1.1
 ## Compute the optimal decision point for the first 5 PCAs of a dataset (e.g. a single person) and 
@@ -55,7 +61,6 @@ entropy <- function(dataset){
 
 decisionPoint <- function(id_pca){
   entList <- c()
-  #id_pca1 <- id_pca$x[, 1]
   entBefore <- entropy(dataset.oneperson.no_labels)
   Pts <- seq(min(id_pca), max(id_pca), length.out=200)
   for( splitP in (1:200)){
@@ -69,26 +74,31 @@ decisionPoint <- function(id_pca){
   return(entList)
 }
 
-#take one person from the dataset
-dataset.oneperson <- do.call(rbind,idList[1:1])
-dataset.oneperson <- as.data.frame(dataset.oneperson)
-dataset.oneperson[,1] <- factor(dataset.oneperson[,1])
-dataset.oneperson.no_labels <- dataset.oneperson[,-1]
-
-#Perform PCA but with only with 5 principal components
-pca.5 <- performPCA(dataset.oneperson.no_labels, 5)
-
-pca1 <- pca.5$x[, 1]
-summary(pca1)
-
-
-for( i in (1:5)) { 
-  pca_i <- pca.5$x[, i]
-  infoGainList <- decisionPoint(pca_i)
+plotInformationGain <- function() {
+  #Perform PCA but with only with 5 principal components
+  pca.5 <- performPCA(dataset.oneperson.no_labels, 5)
+  
+  pca1 <- pca.5$x[, 1]
+  
+  infoGainList <- c()
+  
+  for( i in (1:5)) { 
+    pca_i <- pca.5$x[, i]
+    infoGainList[[i]] <- decisionPoint(pca_i)
+  }
+  
+  plot(c(1:200), infoGainList[[1]], type="b", col=1, lwd=i, pch=1, xlab="Split", ylab="InfoGain")
+  plot_labels <- c("PC 1")
+  for (i in 2:5) {
+    lines(c(1:200), infoGainList[[i]], type="b", col=i, lwd=1, pch=i)
+    plot_labels[i] <- paste("PC ", i, sep = "")
+  }
+  title("Information Gain development from split 1 to 200")
+  legend("bottomleft",plot_labels, lwd=c(1), col=c(1:200), pch=c(1:200), y.intersp=1)
 }
 
-infoGainList <- decisionPoint(pca.5)
-
+# WARNING: 5 minute-ish execution time
+plotInformationGain()
 
 ###########
 ## 4.1.2 - DONE
