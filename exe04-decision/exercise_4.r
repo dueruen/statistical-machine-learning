@@ -9,14 +9,6 @@ library(caret)
 #Load the dataset
 load("idList-cornered-100-2021.Rdata")
 
-# Data to dataframe
-idLoaded <- do.call(rbind, idList[1:13]) 
-idLoaded <- as.data.frame(idLoaded)
-idLoaded[,1] <- factor(idLoaded[,1])
-
-# Remove factor column
-dataset_no_labels <- idLoaded[,-1]
-
 #take one person from the dataset
 dataset.oneperson <- do.call(rbind,idList[1:1])
 dataset.oneperson <- as.data.frame(dataset.oneperson)
@@ -61,7 +53,7 @@ entropy <- function(dataset){
 
 decisionPoint <- function(id_pca){
   entList <- c()
-  entBefore <- entropy(dataset.oneperson.no_labels)
+  entBefore <- entropy(dataset.oneperson)
   Pts <- seq(min(id_pca), max(id_pca), length.out=200)
   for( splitP in (1:200)){
     S1 <- dataset.oneperson.no_labels[ id_pca < Pts[splitP], ] # Perform splits
@@ -77,8 +69,6 @@ decisionPoint <- function(id_pca){
 plotInformationGain <- function() {
   #Perform PCA but with only with 5 principal components
   pca.5 <- performPCA(dataset.oneperson.no_labels, 5)
-  
-  pca1 <- pca.5$x[, 1]
   
   infoGainList <- c()
   
@@ -97,8 +87,9 @@ plotInformationGain <- function() {
   legend("bottomleft",plot_labels, lwd=c(1), col=c(1:200), pch=c(1:200), y.intersp=1)
 }
 
-# WARNING: 5 minute-ish execution time
+# WARNING: 5-10 minute-ish execution time
 plotInformationGain()
+
 
 ###########
 ## 4.1.2 - DONE
