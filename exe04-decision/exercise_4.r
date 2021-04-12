@@ -111,6 +111,7 @@ rpart.plot(tree, box.palette = 0) #Box palette for ignoring error
 ## evaluate a trained decision tree using cross validation. 
 ## Try to train a tree with PCA, and without PCA(raw data).Discuss the important parameters.
 ###########
+
 cross_validation_with_pca <- function(data_set, seed) {
   set.seed(seed)
   folds <-createFolds(data_set[, 1], k = 10) #data_set$X1
@@ -220,24 +221,25 @@ boxplot(res_with_pca[[2]], res_withOut_pca[[2]], names=c("Using first 5 PCA's","
 ## Create a Random Forest classifier and evaluate it using cross validation.
 ## Discuss the critical parameters of “randomForest”(e.g., number and depth of trees)
 ###########
-
-#Take one person and transform dataset and add States column i think?
-df.transformed.dataset <- transform.data(dataset.oneperson, pca.5)
-datanew <- cbind(df.transformed.dataset, dataset.oneperson[,1]) # 'df.transformed.dataset' is a dataframe
-datanew$States <- factor(datanew[,6])
-
-# Create Random Forest classifer. Uses single person. This should be correct.
-model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, ntree=100)
+# Resources
+# https://www.blopig.com/blog/2017/04/a-very-basic-introduction-to-random-forests-using-r/
+# https://rpubs.com/Gonzo25/94920
+# https://www.rdocumentation.org/packages/randomForest/versions/4.6-14/topics/rfcv
 
 # Logging to get to know random forest
-model
+#model
 # Using the importance() function, we can view the importance of each variable.
-importance(model)
+#importance(model)
 
-# WIP
-cross_validation_random_forest <- function(data_set, model, seed) {
+#Cross valid for evaluating random forest
+dataset.oneperson.shuffle <-dataset.oneperson[sample(nrow(dataset.oneperson)),] 
+cross_validation_random_forest <- function(data_set, seed, numberoftrees) {
   set.seed(seed)
   folds <-createFolds(data_set[, 1], k = 10) #data_set$X1
+  
+  tree.count <- numberoftrees
+  
+  #model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = data_set, ntree=tree.count)
   
   cross_validation_results <- lapply(folds, function(x) {
     
@@ -251,22 +253,45 @@ cross_validation_random_forest <- function(data_set, model, seed) {
     data_test <- data_test_with_labels[, -1]
     data_test_labels <- data_test_with_labels[ , 1]
     
+    #Perform PCA but with only with 5 principal components
+    pca.5 <- performPCA(data_train, 5)
     
-    #Predict random forest vs. test set
+    #Take one person and transform dataset and add States column
+    df.transformed.dataset <- transform.data(data_train_with_labels, pca.5)
+    datanew <- cbind(df.transformed.dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew$States <- factor(datanew[,6])
+    
     start_time <- Sys.time()
-    data_pred <-predict(model,data_test)
+    # Create Random Forest classifer. Uses single person.
+    model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, ntree=tree.count)
     end_time <- Sys.time()
+    
+    df.transformed.test_dataset <- transform.data(data_test_with_labels, pca.5)
+    datanew_test <- cbind(df.transformed.test_dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew_test$States <- factor(datanew_test[,6])
+    
+    #Predict random vs. test set
+    data_pred <-predict(model,datanew_test)
     
     run_time <- end_time - start_time
     
     accuracy = mean(data_pred == data_test_labels)
     
-    #crossTable <- CrossTable(x = data_test_labels, y = data_pred, prop.chisq = FALSE)
+    cat("Accuracy:", accuracy, sep = "\n")
     
     return (c(accuracy, run_time))
-    
   })
   return(cross_validation_results)
 }
 
-cross_validation_random_forest(datanew,model,2)
+res_cross_validation_with_random_forest.100 <- cross_validation_random_forest(dataset.oneperson.shuffle,123, 10)
+res_cross_validation_with_random_forest.500 <- cross_validation_random_forest(dataset.oneperson.shuffle,123, 500)
+
+res_random_forest.100 <- do.call(rbind, res_cross_validation_with_random_forest.100[])
+res_random_forest.100 <- as.data.frame(res_random_forest.100)
+
+res_random_forest.500 <- do.call(rbind, res_cross_validation_with_random_forest.500[])
+res_random_forest.500 <- as.data.frame(res_random_forest.500)
+
+boxplot(res_random_forest.100[[1]],res_random_forest.500[[1]], names=c("100 trees","500 trees"), main="Accuracy")
+boxplot(res_random_forest.100[[2]],res_random_forest.500[[2]], names=c("100 trees","500 trees"), main="Run time in s")
