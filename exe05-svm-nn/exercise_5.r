@@ -4,6 +4,7 @@ library(stats)
 library(randomForest)
 library(caret)
 library(kernlab)
+library(RSNNS)
 
 #Load the dataset
 load("idList-cornered-100-2021.Rdata")
@@ -44,4 +45,14 @@ for(i in 1:length(id_train$V1)) { # Set probabilities to one for matching class
 }
 trainingClass <- as.data.frame(nnTrainingClass)
 
+
+############################################################################################
+## 5.2.2
+## Train a neural network with N inputs and 10 outputs, based on the modified training data.
+############################################################################################
+
+network <- mlp(id_train[,-1], trainingClass, size = c(20,20,20), maxit = 100, hiddenActFunc = "Act_TanH", 
+               learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
+
+plotIterativeError(network)
 
