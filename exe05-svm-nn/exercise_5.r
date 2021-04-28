@@ -3,19 +3,20 @@ library(rpart.plot) #SKAL INSTALLERES
 library(stats)
 library(randomForest)
 library(caret)
+library(kernlab)
 
 #Load the dataset
 load("idList-cornered-100-2021.Rdata")
 
-idList <- do.call(rbind,idList)
-idList <- as.data.frame(idList)
-idList[,1] <- factor(idList[,1])
+id <- do.call(rbind, idList[])
+id <- as.data.frame(id)
+id[,1] <- factor(id[,1])
 
-#########
-## 
-#########
+items_per_person = nrow(id) / length(idList)
+id_train <- id[1:(items_per_person*9),]
+id_test <- id[(items_per_person*9 + 1):(items_per_person*13),]
 
-
+classifier_rbf <- ksvm(V1~ ., data = id_train, kernel = "rbfdot", kpar=list(sigma=0.05), C = 1)
 
 
 
@@ -31,13 +32,13 @@ idList[,1] <- factor(idList[,1])
 ## corresponding class as the example shown below (eg. cyper '0' is represented by '1000000000').
 #######################################################################################################
 
-lev <- levels(idList$V1) # Number of classes
+lev <- levels(id_train$V1) # Number of classes
 
 # Create a list probabilities, for all labels
-nnTrainingClass <- matrix(nrow = length(idList$V1), ncol = 10, data = 0) 
+nnTrainingClass <- matrix(nrow = length(id_train$V1), ncol = 10, data = 0) 
 
-for(i in 1:length(idList$V1)) { # Set probabilities to one for matching class
-  matchList <- match(lev,toString(idList$V1[i]))
+for(i in 1:length(id_train$V1)) { # Set probabilities to one for matching class
+  matchList <- match(lev,toString(id_train$V1[i]))
   matchList[is.na(matchList)] <- 0
   nnTrainingClass[i,] <- matchList
 }
