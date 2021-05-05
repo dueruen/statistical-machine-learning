@@ -51,8 +51,47 @@ trainingClass <- as.data.frame(nnTrainingClass)
 ## Train a neural network with N inputs and 10 outputs, based on the modified training data.
 ############################################################################################
 
-network <- mlp(id_train[,-1], trainingClass, size = c(20,20,20), maxit = 100, hiddenActFunc = "Act_TanH", 
-               learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
 
-plotIterativeError(network)
+train_mlp <- function(training_data, training_classes, size) {
+
+  network <- mlp(id_train[,-1], training_classes, size = size, maxit = 200, hiddenActFunc = "Act_Logistic", 
+                 learnFunc="Std_Backpropagation", learnFuncParams = c(0.009,0))
+  
+  plotIterativeError(network)
+  
+  network$IterativeFitError[200]
+  
+  return(network)
+}
+
+network <- train_mlp(id_train, trainingClass, c(50,20))
+
+
+############################################################################################
+## 5.2.3
+## Evaluate the neural network with the test data.
+############################################################################################
+evaluate_nn <- function(network, test_data) { 
+
+  
+  predictions <- predict(network, test_data[,-1])
+  #You can use the following code to convert the mlp output into class labels (0 - 9)
+  responselist <- matrix(nrow = length(predictions[,1]), ncol = 1, data = "Na")
+  for(i in 1:nrow(predictions)) {
+    responselist[i,] <- toString( which(predictions[i,]==max(predictions[i,])) - 1 )
+  }
+  responselist <- data.frame(responselist)
+  responselist[,1] <- as.factor(responselist[,1])
+  # Calculating the accuracy
+  cf <- confusionMatrix(responselist[,1], test_data[,1])
+  return( sum(diag(cf))/sum(cf) )
+
+}
+
+acc_train <- evaluate_nn(network, id_train)
+print("Accuracy when evaluated with training data:")
+print(acc_train)
+acc_test <- evaluate_nn(network, id_test)
+print("Accuracy when evaluated with testing data:")
+print(acc_test)
 
