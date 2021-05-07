@@ -26,17 +26,53 @@ id_test <- id[(items_per_person*9 + 1):(items_per_person*13),]
 #########
 
 start_time <- Sys.time()
-classifier_rbf <- ksvm(V1~ ., data = id_train, kernel = "polydot", kpar="automatic", C = 1)
+classifier_rbf <- ksvm(V1~ ., data = id_train, kernel = "vanilladot", kpar="automatic", C = 1)
 end_time <- Sys.time()
 run_time <- end_time - start_time
 
 classifier_pre <- predict(classifier_rbf,id_test)
 
 cf <- confusionMatrix(classifier_pre, id_test[,1])
-print( sum(diag(cf$table))/sum(cf$table) )
+print( sum(diag(cf))/sum(cf))
 print( run_time )
 
-classifier_rbf <- ksvm(V1~ ., data = id_train, kernel = "rbfdot", kpar=list(sigma=0.05), C = 1)
+#########
+## 5.1.2
+#########
+cs <- c(0.1,0.5, 1,2,3,4,5)
+c_results2 <- lapply(cs, function(x) {
+  start_time_train <- Sys.time()
+  classifier_rbf <- ksvm(V1~ ., data = id_train, kernel = "rbfdot", kpar="automatic", C = x)
+  end_time_train <- Sys.time()
+  run_time_train <- end_time_train - start_time_train
+  
+  classifier_pre <- predict(classifier_rbf,id_test)
+  
+  cf <- confusionMatrix(classifier_pre, id_test[,1])
+  acc <- sum(diag(cf))/sum(cf)
+  cat("train done")
+
+  classifier_pre_with_train <- predict(classifier_rbf,id_train)
+  
+  cf_with_train <- confusionMatrix(classifier_pre_with_train, id_train[,1])
+  acc_with_train <- sum(diag(cf_with_train))/sum(cf_with_train)
+  cat("test done")
+  
+  return (c(acc, run_time_train, acc_with_train))
+})
+
+res <- do.call(rbind, c_results[])
+res <- as.data.frame(res)
+
+plot(cs, res[[1]], type="b", col=1, lwd=1, pch=1, xlab="C value", ylab="Accuracy",ylim=range(0.645,1))
+plot_labels <- c("test data")
+lines(cs, res[[3]], type="b", col=3, lwd=1, pch=3)
+plot_labels[2] <- c("training data")
+title("Accuracy with different C values")
+legend("right",plot_labels, lwd=c(1), col=c(1,3), pch=c(1,3), y.intersp=1)
+
+plot(cs, res[[2]], type="b", col=1, lwd=1, pch=1, xlab="C value", ylab="Run time in minutes")
+title("Runtime in minutes with different C values")
 
 
 ####################################
