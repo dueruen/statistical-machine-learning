@@ -71,8 +71,8 @@ trainingClass <- as.data.frame(nnTrainingClass)
 
 train_mlp <- function(training_data, training_classes, size) {
 
-  network <- mlp(id_train[,-1], training_classes, size = size, maxit = 200, hiddenActFunc = "Act_Logistic", 
-                 learnFunc="Std_Backpropagation", learnFuncParams = c(0.009,0))
+  network <- mlp(id_train[,-1], training_classes, size = size, maxit = 200, hiddenActFunc = "Act_TanH", 
+                 learnFunc="Std_Backpropagation", learnFuncParams = c(0.01,0))
   
   plotIterativeError(network)
   
@@ -81,7 +81,7 @@ train_mlp <- function(training_data, training_classes, size) {
   return(network)
 }
 
-network <- train_mlp(id_train, trainingClass, c(50,20))
+#network <- train_mlp(id_train, trainingClass, c(12, 3))
 
 
 ############################################################################################
@@ -105,10 +105,36 @@ evaluate_nn <- function(network, test_data) {
 
 }
 
-acc_train <- evaluate_nn(network, id_train)
-print("Accuracy when evaluated with training data:")
-print(acc_train)
-acc_test <- evaluate_nn(network, id_test)
-print("Accuracy when evaluated with testing data:")
-print(acc_test)
+#acc_train <- evaluate_nn(network, id_train)
+#print("Accuracy when evaluated with training data:")
+#print(acc_train)
+#acc_test <- evaluate_nn(network, id_test)
+#print("Accuracy when evaluated with testing data:")
+#print(acc_test)
 
+accuracyTestList <- c()
+accuracyTrainingList <- c()
+runtimeList <- c()
+for (i in seq(1, 20, by = 2)) {
+  start_time <- Sys.time()
+  network <- train_mlp(id_train, trainingClass, (i+1))
+  end_time <- Sys.time()
+  runtimeList[[i+1]] <- end_time - start_time
+  accuracyTestList[[i+1]] <- evaluate_nn(network, id_test)
+  accuracyTrainingList[[i+1]] <- evaluate_nn(network, id_train)
+  
+}
+
+plot(c(2,4,6,8,10,12,14,16,18,20), unlist(accuracyTrainingList), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Accuracy")
+plot_labels <- c("Training Data")
+lines(c(2,4,6,8,10,12,14,16,18,20), unlist(accuracyTestList), type="b", col=2, lwd=1, pch=2)
+plot_labels[2] <- paste("Test Data")
+#lines(c(2,4,6,8,10,12,14,16,18,20), unlist(runtimeList), type="b", col=3, lwd=1, pch=3)
+#plot_labels[3] <- paste("Runtime of training")
+
+title("NN Accuracy, 1 hidden layer, X neurons")
+legend("bottomright",plot_labels, lwd=c(1), col=c(2,4,6,8,10,12,14,16,18,20), pch=c(2,4,6,8,10,12,14,16,18,20), y.intersp=1)
+
+
+plot(c(2,4,6,8,10,12,14,16,18,20), unlist(runtimeList), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Runtime in Minutes")
+title("NN Training Runtime, 1 hidden layer, X neurons")
