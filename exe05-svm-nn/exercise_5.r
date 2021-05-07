@@ -117,7 +117,7 @@ train_mlp <- function(training_data, training_classes, size) {
   return(network)
 }
 
-#network <- train_mlp(id_train, trainingClass, c(12, 3))
+#network <- train_mlp(id_train, trainingClass, c(10, 5))
 
 
 ############################################################################################
@@ -141,36 +141,106 @@ evaluate_nn <- function(network, test_data) {
 
 }
 
-#acc_train <- evaluate_nn(network, id_train)
-#print("Accuracy when evaluated with training data:")
-#print(acc_train)
-#acc_test <- evaluate_nn(network, id_test)
-#print("Accuracy when evaluated with testing data:")
-#print(acc_test)
-
+######################## One hidden layer #########################################################
+####################################################################################################
 accuracyTestList <- c()
 accuracyTrainingList <- c()
 runtimeList <- c()
-for (i in seq(1, 20, by = 2)) {
+neurons <- c(2,4,6,8,10,12,14,16,18,20, 22, 24, 26, 28, 30)
+for (i in seq(1, 30, by = 2)) {
   start_time <- Sys.time()
   network <- train_mlp(id_train, trainingClass, (i+1))
   end_time <- Sys.time()
-  runtimeList[[i+1]] <- end_time - start_time
+  runtimeList[[i+1]] <- difftime(Sys.time(), start_time, units = "secs")
   accuracyTestList[[i+1]] <- evaluate_nn(network, id_test)
   accuracyTrainingList[[i+1]] <- evaluate_nn(network, id_train)
   
 }
 
-plot(c(2,4,6,8,10,12,14,16,18,20), unlist(accuracyTrainingList), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Accuracy")
+plot(neurons, unlist(accuracyTrainingList), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Accuracy")
 plot_labels <- c("Training Data")
-lines(c(2,4,6,8,10,12,14,16,18,20), unlist(accuracyTestList), type="b", col=2, lwd=1, pch=2)
+lines(neurons, unlist(accuracyTestList), type="b", col=2, lwd=1, pch=2)
 plot_labels[2] <- paste("Test Data")
-#lines(c(2,4,6,8,10,12,14,16,18,20), unlist(runtimeList), type="b", col=3, lwd=1, pch=3)
-#plot_labels[3] <- paste("Runtime of training")
+
 
 title("NN Accuracy, 1 hidden layer, X neurons")
-legend("bottomright",plot_labels, lwd=c(1), col=c(2,4,6,8,10,12,14,16,18,20), pch=c(2,4,6,8,10,12,14,16,18,20), y.intersp=1)
+legend("bottomright",plot_labels, lwd=c(1), col=c(1,2), pch=c(1,2), y.intersp=1)
 
 
-plot(c(2,4,6,8,10,12,14,16,18,20), unlist(runtimeList), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Runtime in Minutes")
+plot(neurons, unlist(runtimeList), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Runtime in Seconds")
 title("NN Training Runtime, 1 hidden layer, X neurons")
+
+
+######################## Two hidden layers #########################################################
+####################################################################################################
+accuracyTestList <- c()
+accuracyTrainingList <- c()
+runtimeList <- c()
+neurons <- c(2,4,6,8,10,12,14,16,18,20, 22, 24, 26, 28, 30)
+for (i in seq(1, 30, by = 2)) {
+  start_time <- Sys.time()
+  size <- (i + 1)
+  network <- train_mlp(id_train, trainingClass, c(18,size))
+  runtimeList[[i+1]] <- difftime(Sys.time(), start_time, units = "secs")
+  accuracyTestList[[i+1]] <- evaluate_nn(network, id_test)
+  accuracyTrainingList[[i+1]] <- evaluate_nn(network, id_train)
+  
+}
+
+plot(neurons, unlist(accuracyTestList), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Accuracy")
+plot_labels <- c("Test Data")
+lines(neurons, unlist(accuracyTrainingList), type="b", col=2, lwd=1, pch=2)
+plot_labels[2] <- paste("Training Data")
+# For whatever reason, R doesn't draw the second line of the plot
+title("NN Accuracy, 2 hidden layers, X neurons in 2nd layer")
+legend("bottomright",plot_labels, lwd=c(1), col=c(1,2), pch=c(1,2), y.intersp=1)
+
+
+plot(neurons, unlist(runtimeList), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Runtime in Seconds")
+title("NN Training Runtime, 2 hidden layers, X neurons")
+
+
+######## After much pain, the "best" setup has been found to be a network with size c(18,12) #######
+######## it is however performing extremely poorly ###############
+
+
+
+############################################################################################
+## 5.2.4
+## Training of NN with pre-processed data
+############################################################################################
+
+performPCA <- function(dataset, pcaCount){
+  pca <- prcomp(dataset,scale=FALSE, rank. = pcaCount)
+  return (pca)
+}
+
+#Perform PCA, get top 10 principal components
+pca.10 <- performPCA(id[,-1], 10)
+
+accuracyTestList.pca <- c()
+accuracyTrainingList.pca <- c()
+runtimeList.pca <- c()
+neurons <- c(2,4,6,8,10,12,14,16,18,20, 22, 24, 26, 28, 30)
+for (i in seq(1, 30, by = 2)) {
+  start_time <- Sys.time()
+  network <- train_mlp(pca.10$x, trainingClass, (i+1))
+  end_time <- Sys.time()
+  runtimeList.pca[[i+1]] <- difftime(Sys.time(), start_time, units = "secs")
+  accuracyTestList.pca[[i+1]] <- evaluate_nn(network, id_test)
+  accuracyTrainingList.pca[[i+1]] <- evaluate_nn(network, id_train)
+  
+}
+
+plot(neurons, unlist(accuracyTrainingList.pca), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Accuracy")
+plot_labels <- c("Training Data")
+lines(neurons, unlist(accuracyTestList.pca), type="b", col=2, lwd=1, pch=2)
+plot_labels[2] <- paste("Test Data")
+
+
+title("NN w/PCA Preprocessing Accuracy, 1 hidden layer")
+legend("bottomright",plot_labels, lwd=c(1), col=c(1,2), pch=c(1,2), y.intersp=1)
+
+
+plot(neurons, unlist(runtimeList.pca), type="b", col=1, lwd=1, pch=1, xlab="Neurons in hidden layer", ylab="Runtime in Seconds")
+title("NN w/PCA Preprocessin Training Runtime, 1 hidden layer")
