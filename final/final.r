@@ -72,3 +72,29 @@ dataset_shuffle <-id_min_max_normalized[sample(nrow(id_min_max_normalized)),]
 min_max_all_persons_train <- dataset_shuffle[1:(items_per_person*30),]
 min_max_all_persons_test <- dataset_shuffle[(items_per_person*30 + 1):(items_per_person*38),]
 
+#######
+## Z normalization
+#######
+id_z_normalized <- as.data.frame(scale(id[-1]))
+id_z_normalized <- cbind(V1 = 0, id_z_normalized)
+
+z_normalized_disjunct_train <- id_z_normalized[1:(items_per_person*30),]
+z_normalized_disjunct_test <- id_z_normalized[(items_per_person*30 + 1):(items_per_person*38),]
+
+set.seed(1234)
+dataset_shuffle <-id_z_normalized[sample(nrow(id_z_normalized)),]
+z_normalized_all_persons_train <- dataset_shuffle[1:(items_per_person*30),]
+z_normalized_all_persons_test <- dataset_shuffle[(items_per_person*30 + 1):(items_per_person*38),]
+
+
+
+
+
+
+
+
+
+
+
+
+
