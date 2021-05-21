@@ -29,7 +29,8 @@ plotData <- function (data_to_plot) {
     idx <- 0
     for (y in 0:20) {
       idx <- idx+1
-      tmpM <- matrix(data_to_plot[(x*200-idx),2:325],18,18)
+      d <- data_to_plot[[y + 1]]
+      tmpM <- matrix(d[(x*200-idx),2:325],18,18)
       for (xM in 1:18) {
         for (yM in 1:18) {
           img[(x-1)*18+xM, (y-1)*18+yM] <- tmpM[xM,yM]
@@ -44,5 +45,5 @@ plotData <- function (data_to_plot) {
   image(rotate(img),col=gray(0:100/100) )
 }
 
-plotData (idList[[1]])
+plotData (idList)
 
