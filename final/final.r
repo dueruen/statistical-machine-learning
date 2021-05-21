@@ -6,7 +6,9 @@ library(caret)
 library(kernlab)
 library(RSNNS)
 
+#######
 #Load the dataset
+#######
 load("idList-FinalExam.Rdata")
 
 id <- do.call(rbind, idList[])
@@ -14,14 +16,17 @@ id <- as.data.frame(id)
 id[,1] <- factor(id[,1])
 
 items_per_person = nrow(id) / length(idList)
-disjunct_train <- id[1:(items_per_person*30),]
-disjunct_test <- id[(items_per_person*30 + 1):(items_per_person*38),]
+raw_disjunct_train <- id[1:(items_per_person*30),]
+raw_disjunct_test <- id[(items_per_person*30 + 1):(items_per_person*38),]
 
 set.seed(1234)
 dataset_shuffle <-id[sample(nrow(id)),]
-all_persons_train <- dataset_shuffle[1:(items_per_person*30),]
-all_persons_test <- dataset_shuffle[(items_per_person*30 + 1):(items_per_person*38),]
+raw_all_persons_train <- dataset_shuffle[1:(items_per_person*30),]
+raw_all_persons_test <- dataset_shuffle[(items_per_person*30 + 1):(items_per_person*38),]
 
+#######
+## Plot raw data
+#######
 plotData <- function (data_to_plot, persons) {
   img <- matrix(,180,18*persons)
   
@@ -43,4 +48,27 @@ plotData <- function (data_to_plot, persons) {
 }
 
 plotData (idList, 35)
+
+##########
+##########
+## Preprocessing raw data
+##########
+##########
+#######
+## Min max normalization
+#######
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+id_min_max_normalized <- as.data.frame(lapply(id[-1], normalize))
+id_min_max_normalized <- cbind(V1 = 0, id_min_max_normalized)
+
+min_max_disjunct_train <- id_min_max_normalized[1:(items_per_person*30),]
+min_max_disjunct_test <- id_min_max_normalized[(items_per_person*30 + 1):(items_per_person*38),]
+
+set.seed(1234)
+dataset_shuffle <-id_min_max_normalized[sample(nrow(id_min_max_normalized)),]
+min_max_all_persons_train <- dataset_shuffle[1:(items_per_person*30),]
+min_max_all_persons_test <- dataset_shuffle[(items_per_person*30 + 1):(items_per_person*38),]
 
