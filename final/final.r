@@ -22,15 +22,14 @@ dataset_shuffle <-id[sample(nrow(id)),]
 all_persons_train <- dataset_shuffle[1:(items_per_person*30),]
 all_persons_test <- dataset_shuffle[(items_per_person*30 + 1):(items_per_person*38),]
 
-id <- idList[[5]]
-#for (num in 5:5) {
+plotData <- function (data_to_plot) {
   img <- matrix(,180,360)
   
-  for (x in 0:9){
+  for (x in 0:10){
     idx <- 0
-    for (y in 1:20) {
+    for (y in 0:20) {
       idx <- idx+1
-      tmpM <- matrix(id[(x*200+idx),2:325],18,18)
+      tmpM <- matrix(data_to_plot[(x*200-idx),2:325],18,18)
       for (xM in 1:18) {
         for (yM in 1:18) {
           img[(x-1)*18+xM, (y-1)*18+yM] <- tmpM[xM,yM]
@@ -41,6 +40,9 @@ id <- idList[[5]]
     }
     
   }
-  
-  image(img,col=gray(0:100/100) )
-#}
+  rotate <- function(x) t(apply(x, 2, rev))
+  image(rotate(img),col=gray(0:100/100) )
+}
+
+plotData (idList[[1]])
+
