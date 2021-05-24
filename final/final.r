@@ -4,7 +4,6 @@ library(stats)
 library(randomForest)
 library(caret)
 library(kernlab)
-library(RSNNS)
 library(gmodels)
 library(class)
 library(caret)
@@ -221,72 +220,100 @@ boxplot(res_random_forest.100[[1]],res_random_forest.500[[1]], names=c("100 tree
 boxplot(res_random_forest.100[[2]],res_random_forest.500[[2]], names=c("100 trees","500 trees"), main="Run time in s")
 
 
-
-cross_validation <- function(data_set, seed, k_value) {
+###########
+## Cross-validate KNN, 10-folds
+###########
+cross_validation_knn <- function(data_set, seed, k_value) {
   set.seed(seed)
-
+  
   folds <-createFolds(data_set[, 1], k = 10) 
   
-  #lapply() returns a list of the same length as X, each element of which is the result 
-  # of applying FUN to the corresponding element of X
-  cross_validation_results <- lapply(folds, function(x) {
+  accuracyList <- c(1:10)
+  runtimeList <- c(1:10)
+
+  for(i in 1:10)
+  {
+    id_train <- data_set[-folds[[i]],-1]
+    id_test <- data_set[folds[[i]],-1]
     
+    id_train_labels <- data_set[-folds[[i]],1]
+    id_test_labels <- data_set[folds[[i]],1]
     
-    # Training data
-    data_train_with_labels <- data_set[-x, ]
-    df.train.data <- data_train_with_labels[, -1]
-    df.train.labels <- data_train_with_labels[ , 1]
-    
-    # Test data
-    data_test_with_labels <- data_set[x, ]
-    df.test.data <- data_test_with_labels[, -1]
-    data_test_labels <- data_test_with_labels[ , 1]
-    
-    
-    
-    # KNN on the data set
     start_time <- Sys.time()
-    knn_classifier <- knn(train = df.train.data, test = df.test.data, cl = df.train.labels, k = 101)
+    id_test_pred <- knn(train = id_train, test = id_test, cl = id_train_labels, k=k_value)
     run_time <- difftime(Sys.time(), start_time, units = "secs")
     
-    # Calc the accuracy of knn
-    accuracy.test = mean(knn_classifier == data_test_labels)
-    accuracy.training = mean(knn_classifier == df.train.labels)
+    cf <- confusionMatrix(id_test_labels, id_test_pred)
+    accuracyList[i] <- sum(diag(cf$table))/sum(cf$table)
+    runtimeList[i] <- run_time
+
     
+  }
+  
+  meanRuntime <- mean(runtimeList)
+  varianceRuntime <- var(runtimeList)
+  meanAccuracy <- mean(accuracyList)
+  varianceAccuracy <- var(accuracyList)
+  
+  return(c(meanAccuracy, varianceAccuracy, meanRuntime, varianceRuntime))
     
-    ## How to get variance?
-    
-    # Calc the error rate of knn
-    error.rate.test = mean(knn_classifier != data_test_labels)
-    error.rate.training = mean(knn_classifier != df.train.labels)
-    return(list(accuracy.training, error.rate.training, accuracy.test, error.rate.test, run_time))
-  })
-  return(cross_validation_results)
 }
 
-knn_cv_plot <- function(data_set) { 
+std_dev_lists <- function(variance_list_raw, mean_list_raw) { 
+  
+  upper <- c()
+  lower <- c()
+  
+  variance_list <- unlist(variance_list_raw)
+  mean_list <- unlist(mean_list_raw)
+  
+  for(i in 1:11) { 
+    variance <- variance_list[[i]][1]
+    mean <- mean_list[[i]][1]
+    std_dev <- sqrt(variance)
+    upper[i] <- mean + std_dev
+    lower[i] <- mean - std_dev
+    
+  }
+  
+  result <- list(upper, lower)
+  return(result)
+}
 
+###########################################
+########### WARNING: Almost 10 hour runtime
+###########################################
+knn_cv_and_plot_raw <- function() { 
+  
+  accuracyList <- c()
+  runtimeList <- c()
+  varianceList <- c()
+  resultList <- c()
+  for (i in seq(1,101, by = 10)) { 
+    resultList[[i]] <- cross_validation_knn(dataset_shuffle, 1234, i)
+    accuracyList[[i]] <- resultList[[i]][1]
+    varianceList[[i]] <- resultList[[i]][2]
+    runtimeList[[i]] <- resultList[[i]][3]
+  } 
+  
+  std_dev <- std_dev_lists(varianceList, accuracyList)
+  upper <- std_dev[[1]]
+  lower <- std_dev[[2]]
+  
+  plot(c(1,11,21,31,41,51,61,71,81,91,101), unlist(accuracyList), type="b", col=3, lwd=3, pch=1, xlab="K value", ylab="Mean Accuracy [%]")
+  plot_labels <- c("Mean Accuracy")
+  lines(c(1,11,21,31,41,51,61,71,81,91,101), unlist(upper), type="b", col=2, lwd=1, pch=2)
+  plot_labels[2] <- paste("Std. Deviation")
+  lines(c(1,11,21,31,41,51,61,71,81,91,101), unlist(lower), type="b", col=2, lwd=1, pch=2)
+  plot_labels[3] <- paste("Std. Deviation")
+  polygon(c(c(1,11,21,31,41,51,61,71,81,91,101), rev(c(1,11,21,31,41,51,61,71,81,91,101))), c(upper, rev(lower)), col = adjustcolor("red",alpha.f=0.2) )
+  legend("bottomleft",plot_labels, lwd=c(1), col=c(3,2,2), pch=c(1,2,2), y.intersp=1)
+  title("Accuracy, 10-fold cross-validation, raw data")
+  
+  plot(c(1,11,21,31,41,51,61,71,81,91,101), unlist(runtimeList), type="b", col=1, lwd=1, pch=1, xlab="K value", ylab="Mean Runtime [s]")
+  title("Runtime, 10-fold cross-validation, raw data")
   
 }
 
-resultList <- c()
-
-#for (i in seq(1, 101, by = 10)) {
-  
-  result <- cross_validation(dataset_shuffle, 101)
-  
-#}
-
-
-
-
-
-
-
-
-
-
-
-
-
+knn_cv_and_plot_raw() #### WARNING: Roughly 11 hour runtime
 
