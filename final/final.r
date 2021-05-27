@@ -4,7 +4,6 @@ library(stats)
 library(randomForest)
 library(caret)
 library(kernlab)
-library(RSNNS)
 library("spatstat")
 
 #######
@@ -121,7 +120,7 @@ gaussianSmoothing <- function (data_without_labels, sigma_value) {
 }
 gu_si_025 <- gaussianSmoothing(id[,-1], 0.25)
 plotData2 (gu_si_025)
- 
+
 gu_si_05 <- gaussianSmoothing(id[,-1], 0.5)
 plotData2 (gu_si_05)
 
@@ -197,6 +196,9 @@ plotData2 (min_max_z)
 
 min_max_z_gau <- gaussianSmoothing(min_max_z, 0.75)
 plotData2 (min_max_z_gau)
+
+#With label
+min_max_z_gau.label <- cbind(V1 = id[1], min_max_z_gau)
 
 
 # GAU
@@ -372,7 +374,7 @@ plotEigen(min_max_gau_pca)
 ## Find the best amount of PC's to use
 #######
 performPCA <- function(dataset, pcaCount){
-  pca <- prcomp(dataset,scale=FALSE, rank. = pcaCount)
+  pca <- prcomp(dataset,scale=TRUE, rank = pcaCount)
   return (pca)
 }
 
@@ -395,10 +397,42 @@ calculatePropOfVariance <- function(pr.var){
 pve <- calculatePropOfVariance(pr.var)
 pve
 
-# A plot of the variance
-plot(pr.var[1:300], xlab="Principal Component", ylab="Variance", ylim=c(0,40),type="b")
-abline(v = 8, col="green", lty=5)
-abline(v = 67, col="red", lty=5)
+#####
+## Calculate the right amount of PCs
+#####
+
+#Right amount of PCs
+pca.all.gau <- prcomp(min_max_z_gau.label[,-1], scale = TRUE)
+pca.all.raw <- prcomp(id[,-1], scale = TRUE)
+pca.all.normalized <- prcomp(id_min_max_normalized, scale = TRUE)
+pca.all.minmaxgau <- prcomp(min_max_gau, scale = TRUE)
+
+pr.var.all.gau <- calculateExplainedVariance(pca.all.gau)
+pr.var.all.raw <- calculateExplainedVariance(pca.all.raw)
+pr.var.all.normalized <- calculateExplainedVariance(pca.all.normalized)
+pr.var.all.minmaxgau <- calculateExplainedVariance(pca.all.minmaxgau)
+
+plot(pr.var.all.raw[1:70], xlab="Principal Component", ylab="Variance", ylim=c(0,150),type="b")
+abline(v = 41, col="green", lty=5)
+abline(h = 1, col="red", lty=5)
+
+pve.all.gau <- calculatePropOfVariance(pr.var.all.gau)
+pve.all.raw <- calculatePropOfVariance(pr.var.all.raw)
+pve.all.normalized <- calculatePropOfVariance(pr.var.all.normalized)
+pve.all.minmaxgau <- calculatePropOfVariance(pr.var.all.minmaxgau)
+
+total.variance <- 0.90
+
+in_pc.gau <- cumsum(pve.all.gau) <= total.variance #sum values up to the explained variance
+in_pc.raw <- cumsum(pve.all.raw) <= total.variance #sum values up to the explained variance
+in_pc.normalized <- cumsum(pve.all.normalized) <= total.variance #sum values up to the explained variance
+in_pc.minmaxgau <- cumsum(pve.all.minmaxgau) <= total.variance #sum values up to the explained variance
+
+sum(in_pc.gau) #Count true values gau
+sum(in_pc.raw) #Count true values raw
+sum(in_pc.normalized) #Count true values normalized
+sum(in_pc.minmaxgau) #Count true values minmaxgau
+
 
 #A plot of the PVE explained by each component
 plot(pve[1:10], xlab="Principal Component", ylab="Proportion of Variance Explained",type="b")
@@ -469,18 +503,206 @@ cross_validation_random_forest <- function(data_set, seed, numberoftrees) {
   return(cross_validation_results)
 }
 
-res_cross_validation_with_random_forest.100 <- cross_validation_random_forest(dataset_shuffle,123, 10)
+###
+##Optimized CR
+###
+
+optimized_cross_validation_random_forest <- function(data_set, seed, numberoftrees, principal_components) {
+  set.seed(seed)
+  folds <-createFolds(data_set[, 1], k = 10) 
+  tree.count <- numberoftrees
+  
+  cross_validation_results <- lapply(folds, function(x) {
+    
+    #90% of the entire dataset is assigned to data_train
+    data_train_with_labels <- data_set[-x, ]
+    data_train <- data_train_with_labels[, -1]
+    data_train_labels <- data_train_with_labels[ , 1]
+    data_train_with_labels[ , 1]
+    
+    # The rest 10% of the dataset is assigned to data_test
+    data_test_with_labels <- data_set[x, ]
+    data_test <- data_test_with_labels[, -1]
+    data_test_labels <- data_test_with_labels[ , 1]
+    
+    #Perform PCA
+    pca <- performPCA(data_train, principal_components)
+    #pca.this <- pca$x[,1:principal_components]
+    #pca.this <- data.frame(pca.this) # Make it a data frame
+    
+    #Take one person and transform dataset and add States column
+    df.transformed.dataset <- transform.data(data_train_with_labels, pca)
+    datanew <- cbind(df.transformed.dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew$States <- factor(datanew[,principal_components + 1])
+    #datanew$`data_train_with_labels[,1]` <- NULL
+    
+    start_time <- Sys.time()
+    # Create Random Forest classifer. 
+    model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15, data = datanew, ntree=tree.count)
+    end_time <- Sys.time()
+    
+    df.transformed.test_dataset <- transform.data(data_test_with_labels, pca)
+    datanew_test <- cbind(df.transformed.test_dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew_test$States <- factor(datanew_test[,principal_components + 1])
+    #datanew_test$`data_train_with_labels[,1]` <- NULL
+    
+    #Predict random vs. test set
+    data_pred <-predict(model,datanew_test)
+    
+    run_time <- end_time - start_time
+    
+    accuracy = mean(data_pred == data_test_labels)
+    
+    cat("Accuracy:", accuracy, sep = "\n")
+    
+    return (c(accuracy, run_time))
+  })
+  return(cross_validation_results)
+}
+
+res_cross_validation_with_random_forest.100 <- optimized_cross_validation_random_forest(min_max_z_gau.label,123, 100, 31)
+
+##
+#The zouqi way
+##
+
+#Preparing PCA
+pca.5 <- performPCA(min_max_z_gau.label[,-1], 31)
+pca.10 <- pca.5$x[,1:31]
+pca.10 <- data.frame(pca.10) # Make it a data frame
+
+datanew <- cbind(pca.10, id[,1])
+datanew$States <-factor(datanew[,32])
+datanew$`id[, 1]` <- NULL
+model.random <- randomForest(States ~ ., data = datanew, ntree=500)
+
+p.disjunkt <- predict(model.random.100.pc.train,raw_disjunct_test)
+cf.disjunkt <- confusionMatrix(p.disjunkt, raw_disjunct_test[,1])
+print( sum(diag(cf$table))/sum(cf$table) )
+
+#Test 100 trees. PCA Changing nodesize didn't have impact but maxnodes has big impact on computation and error rate.
+start_time <- Sys.time()
+model.random.100 <- randomForest(States ~ . , data = datanew, ntree=100, maxnodes = 59)
+end_time <- Sys.time()
+run_time.100 <- end_time - start_time
+
+#Test 500 trees PCA
+start_time <- Sys.time()
+model.random.500 <- randomForest(States ~ . , data = datanew, ntree=500)
+end_time <- Sys.time()
+run_time.500 <- end_time - start_time
+
+#Random forest disjunct 100 trees
+start_time <- Sys.time()
+model.random.100.disjunct.train <- randomForest(V1 ~ . , data = raw_disjunct_train, ntree=100)
+end_time <- Sys.time()
+run_time.100.disjunct <- end_time - start_time
+
+p.disjunkt <- predict(model.random.100.disjunct.train,raw_disjunct_test)
+cf.disjunkt <- confusionMatrix(p.disjunkt, raw_disjunct_test[,1])
+print( sum(diag(cf$table))/sum(cf$table) )
+
+#start_time <- Sys.time()
+#model.random.100.disjunct <- randomForest(V1 ~ . , data = id, ntree=100)
+#end_time <- Sys.time()
+#run_time.100.disjunct <- end_time - start_time
+
+#Random forest all-persons in 100 trees
+start_time <- Sys.time()
+model.random.100.raw_all_person.train <- randomForest(V1 ~ . , data = raw_all_persons_train, ntree=100)
+end_time <- Sys.time()
+run_time.100.raw_all_person <- end_time - start_time
+
+p.all_person <- predict(model.random.100.raw_all_person.train,raw_all_persons_test)
+cf.all_person <- confusionMatrix(p.all_person, raw_all_persons_test[,1])
+print( sum(diag(cf$table))/sum(cf$table) )
+
+#start_time <- Sys.time()
+#model.random.100.all_person_in <- randomForest(V1 ~ . , data = dataset_shuffle, ntree=100)
+#end_time <- Sys.time()
+#run_time.100.all_person_in <- end_time - start_time
+
+#Prep
+model.random.500
+#OOB + confusion matrix + disjunkt
+model.random.100.disjunct
+#OOB + confusion matrix + disjunkt
+model.random.100.all_person_in
+
+par(mfrow=c(1,1)) 
+plot(model.random.100, main ="Error as a function of trees") # Error as a function of trees
+legend("topright", colnames(model.random$err.rate),col=1:1, cex=0.8,fill=1:12)
+
+plot(model.random.500, main ="Error as a function of trees") # Error as a function of trees
+legend("topright", colnames(model.random$err.rate),col=1:1, cex=0.8,fill=1:12)
+
+plot(model.random.100.disjunct, main ="Error as a function of trees") # Error as a function of trees
+legend("topright", colnames(model.random$err.rate),col=1:1, cex=0.8,fill=1:12)
+
+# 10-fold cross validation
+start_time <- Sys.time()
+model.cv <- rf.crossValidation(x = model.random, xdata = min_max_z_gau.label, p = 0.1, n = 10, trace = TRUE) 
+end_time <- Sys.time()
+run_time <- end_time - start_time #Time difference of 4.699376 hours 1 run
+
+# Plot cross validation verses model producers accuracy
+par(mfrow=c(1,2)) 
+plot(model.cv, type = "cv", main = "CV producers accuracy")
+plot(model.cv, type = "model", main = "Model producers accuracy")
+
+# Plot cross validation verses model OOB
+par(mfrow=c(1,2)) 
+plot(model.cv, type = "cv", stat = "oob", main = "CV OOB error")
+plot(model.cv, type = "model", stat = "oob", main = "Model OOB error")
+
+
+#Runs with dataset not preprocessed
+res_cross_validation_with_random_forest.100 <- cross_validation_random_forest(dataset_shuffle,123, 100)
 res_cross_validation_with_random_forest.500 <- cross_validation_random_forest(dataset_shuffle,123, 500)
 
-res_random_forest.100 <- do.call(rbind, res_cross_validation_with_random_forest.100[])
-res_random_forest.100 <- as.data.frame(res_random_forest.100)
+res_random_forest.100.not.processed <- do.call(rbind, res_cross_validation_with_random_forest.100[])
+res_random_forest.100.not.processed <- as.data.frame(res_random_forest.100.not.processed)
 
-res_random_forest.500 <- do.call(rbind, res_cross_validation_with_random_forest.500[])
-res_random_forest.500 <- as.data.frame(res_random_forest.500)
+res_random_forest.500.not.processed <- do.call(rbind, res_cross_validation_with_random_forest.500[])
+res_random_forest.500.not.processed <- as.data.frame(res_random_forest.500.not.processed)
+
+#Cross-validation with preprocessed dataset (min_max_norm)
+res_cross_validation_with_random_forest.100.processed.min_max_norm <- cross_validation_random_forest(id_min_max_normalized,123, 100)
+res_cross_validation_with_random_forest.500.processed.min_max_norm <- cross_validation_random_forest(id_min_max_normalized,123, 500)
+
+res_random_forest.100.min_max_norm <- do.call(rbind, res_cross_validation_with_random_forest.100.processed.min_max_norm[])
+res_random_forest.100.min_max_norm <- as.data.frame(res_random_forest.100.min_max_norm)
+
+res_random_forest.500.min_max_norm <- do.call(rbind, res_cross_validation_with_random_forest.500.processed.min_max_norm[])
+res_random_forest.500.min_max_norm <- as.data.frame(res_random_forest.500.min_max_norm)
+
+
+#Cross-validation with preprocessed dataset (min_max_z_gau)
+res_cross_validation_with_random_forest.100.processed.min_max <- cross_validation_random_forest(min_max_z_gau.label,123, 100)
+res_cross_validation_with_random_forest.500.processed.min_max <- cross_validation_random_forest(min_max_z_gau.label,123, 500)
+
+res_random_forest.100.min_max_z_gau <- do.call(rbind, res_cross_validation_with_random_forest.100.processed.min_max[])
+res_random_forest.100.min_max_z_gau <- as.data.frame(res_random_forest.100.min_max_z_gau)
+
+res_random_forest.500.min_max_z_gau <- do.call(rbind, res_cross_validation_with_random_forest.500.processed.min_max[])
+res_random_forest.500.min_max_z_gau <- as.data.frame(res_random_forest.500.min_max_z_gau)
 
 #Plot only 100
-boxplot(res_random_forest.100[[1]], names=c("100 trees"), main="Accuracy")
+boxplot(res_random_forest.100.min_max_z_gau[[1]], names=c("100 trees"), main="Accuracy")
 boxplot(res_random_forest.100[[2]], names=c("100 trees"), main="Run time in s")
+
+#Big plot
+boxplot(
+  res_random_forest.100.not.processed[[1]],
+  res_random_forest.100.min_max_norm[[1]],
+  res_random_forest.100.min_max_z_gau[[1]],
+  res_random_forest.500.not.processed[[1]],
+  res_random_forest.500.min_max_norm[[1]],
+  res_random_forest.500.min_max_z_gau[[1]], 
+  names=c("100t. not process","100t. minmaxnorm", "100t. gau","500t. not process","500t. minmaxnorm", "500t. gau"), 
+  main="Accuracy"
+)
+boxplot(res_random_forest.100.not.processed[[2]],res_random_forest.100.min_max_norm[[2]],res_random_forest.100.min_max_z_gau[[2]], names=c("100t. not process","100t. minmaxnorm", "100t. gau"), main="Run time in sec")
 
 #Plot both 100 and 500 
 boxplot(res_random_forest.100[[1]],res_random_forest.500[[1]], names=c("100 trees","500 trees"), main="Accuracy")
