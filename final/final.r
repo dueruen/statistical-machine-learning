@@ -580,9 +580,18 @@ p.disjunkt <- predict(model.random.100.pc.train,raw_disjunct_test)
 cf.disjunkt <- confusionMatrix(p.disjunkt, raw_disjunct_test[,1])
 print( sum(diag(cf$table))/sum(cf$table) )
 
+p.disjunkt <- predict(model.random.100.disjunct.train,raw_disjunct_test)
+cf.disjunkt <- confusionMatrix(p.disjunkt, raw_disjunct_test[,1])
+print( sum(diag(cf.disjunkt$table))/sum(cf.disjunkt$table) )
+
+#Check for overfitting
+p.disjunkt.overfitting <- predict(model.random.100.disjunct.train,raw_disjunct_train)
+cf.disjunkt.overfitting <- confusionMatrix(p.disjunkt.overfitting, raw_disjunct_train[,1])
+print( sum(diag(cf.disjunkt.overfitting$table))/sum(cf.disjunkt.overfitting$table) )
+
 #Test 100 trees. PCA Changing nodesize didn't have impact but maxnodes has big impact on computation and error rate.
 start_time <- Sys.time()
-model.random.100 <- randomForest(States ~ . , data = datanew, ntree=100, maxnodes = 59)
+model.random.100.pc <- randomForest(States ~ . , data = datanew, ntree=100, maxnodes = 100)
 end_time <- Sys.time()
 run_time.100 <- end_time - start_time
 
@@ -594,7 +603,7 @@ run_time.500 <- end_time - start_time
 
 #Random forest disjunct 100 trees
 start_time <- Sys.time()
-model.random.100.disjunct.train <- randomForest(V1 ~ . , data = raw_disjunct_train, ntree=100)
+model.random.100.disjunct.train <- randomForest(V1 ~ . , data = raw_disjunct_train, ntree=100, max)
 end_time <- Sys.time()
 run_time.100.disjunct <- end_time - start_time
 
@@ -630,10 +639,10 @@ model.random.100.disjunct
 model.random.100.all_person_in
 
 par(mfrow=c(1,1)) 
-plot(model.random.100, main ="Error as a function of trees") # Error as a function of trees
-legend("topright", colnames(model.random$err.rate),col=1:1, cex=0.8,fill=1:12)
+plot(model.random.100$err.rate[,1], main ="Error as a function of trees", ylab="Out-of-bag error rate", xlab="Number of trees") # Error as a function of trees
+xlegend("topright", colnames(model.random$err.rate[,1]),col=1:1, cex=0.8,fill=1:1)
 
-plot(model.random.500, main ="Error as a function of trees") # Error as a function of trees
+plot(model.random.500$err.rate[,1], main ="Error as a function of trees", ylab="Out-of-bag error rate", xlab="Number of trees") # Error as a function of trees) # Error as a function of trees
 legend("topright", colnames(model.random$err.rate),col=1:1, cex=0.8,fill=1:12)
 
 plot(model.random.100.disjunct, main ="Error as a function of trees") # Error as a function of trees
@@ -645,8 +654,20 @@ model.cv <- rf.crossValidation(x = model.random, xdata = min_max_z_gau.label, p 
 end_time <- Sys.time()
 run_time <- end_time - start_time #Time difference of 4.699376 hours 1 run
 
+# 10-fold cross validation - Raw all_person_in
+start_time <- Sys.time()
+model.cv.all_person <- rf.crossValidation(x = model.random, xdata = min_max_z_gau.label, p = 0.1, n = 10, trace = TRUE) 
+end_time <- Sys.time()
+run_time <- end_time - start_time #Time difference in X
+
+# 10-fold cross validation - Raw disjunkt
+start_time <- Sys.time()
+model.cv.disjunkt <- rf.crossValidation(x = model.random.100.disjunct.train, xdata = raw_disjunct_train, p = 0.1, n = 10, trace = TRUE) 
+end_time <- Sys.time()
+run_time.disjunkt <- end_time - start_time #Time difference in X
+
 # Plot cross validation verses model producers accuracy
-par(mfrow=c(1,2)) 
+par(mfrow=c(1,1)) 
 plot(model.cv, type = "cv", main = "CV producers accuracy")
 plot(model.cv, type = "model", main = "Model producers accuracy")
 
@@ -654,6 +675,21 @@ plot(model.cv, type = "model", main = "Model producers accuracy")
 par(mfrow=c(1,2)) 
 plot(model.cv, type = "cv", stat = "oob", main = "CV OOB error")
 plot(model.cv, type = "model", stat = "oob", main = "Model OOB error")
+
+# Plot cross validation verses model producers accuracy. Disjunkt
+par(mfrow=c(1,2)) 
+plot(model.cv.disjunkt, type = "cv", main = "CV producers accuracy")
+plot(model.cv.disjunkt, type = "model", main = "Model producers accuracy")
+
+# Plot cross validation verses model OOB. Disjunkt
+par(mfrow=c(1,1)) 
+plot(model.cv.disjunkt, type = "cv", stat = "oob", main = "CV OOB error")
+plot(model.cv.disjunkt, type = "model", stat = "oob", main = "Model OOB error")
+
+par(mfrow=c(1,2))
+plot(model.cv.disjunkt, stat = "mse")
+plot(model.cv.disjunkt, stat = "var.exp")
+plot(model.cv.disjunkt, stat = "mae")
 
 
 #Runs with dataset not preprocessed
