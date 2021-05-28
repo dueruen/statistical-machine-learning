@@ -5,6 +5,7 @@ library(randomForest)
 library(caret)
 library(kernlab)
 library("spatstat")
+library(rfUtilities)
 
 #######
 #Load the dataset
@@ -482,7 +483,7 @@ cross_validation_random_forest <- function(data_set, seed, numberoftrees) {
     
     start_time <- Sys.time()
     # Create Random Forest classifer. Uses single person.
-    model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5, data = datanew, ntree=tree.count)
+    model <- randomForest(States ~ ., data = datanew, ntree=tree.count)
     end_time <- Sys.time()
     
     df.transformed.test_dataset <- transform.data(data_test_with_labels, pca.5)
@@ -513,7 +514,7 @@ optimized_cross_validation_random_forest <- function(data_set, seed, numberoftre
   tree.count <- numberoftrees
   
   cross_validation_results <- lapply(folds, function(x) {
-    
+    cat("Fold:", x, sep = " ")
     #90% of the entire dataset is assigned to data_train
     data_train_with_labels <- data_set[-x, ]
     data_train <- data_train_with_labels[, -1]
@@ -538,8 +539,9 @@ optimized_cross_validation_random_forest <- function(data_set, seed, numberoftre
     
     start_time <- Sys.time()
     # Create Random Forest classifer. 
-    model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15, data = datanew, ntree=tree.count)
-    end_time <- Sys.time()
+    model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10, data = datanew, ntree=tree.count)
+    #model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15 + PC16 + PC17 + PC18 + PC19 + PC20 + PC21, data = datanew, ntree=tree.count)
+    run_time <- difftime(Sys.time(), start_time, units = "secs")
     
     df.transformed.test_dataset <- transform.data(data_test_with_labels, pca)
     datanew_test <- cbind(df.transformed.test_dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
@@ -547,27 +549,95 @@ optimized_cross_validation_random_forest <- function(data_set, seed, numberoftre
     #datanew_test$`data_train_with_labels[,1]` <- NULL
     
     #Predict random vs. test set
-    data_pred <-predict(model,datanew_test)
+    data_pred_test <-predict(model,datanew_test)
     
-    run_time <- end_time - start_time
+    df.transformed.train_dataset <- transform.data(data_train_with_labels, pca)
+    datanew_train <- cbind(df.transformed.train_dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew_train$States <- factor(datanew_train[,principal_components + 1])
     
-    accuracy = mean(data_pred == data_test_labels)
+    data_pred_train <-predict(model,datanew_train)
     
-    cat("Accuracy:", accuracy, sep = "\n")
+    accuracy.test = mean(data_pred_test == data_test_labels)
+    accuracy.train = mean(data_pred_train == data_train_labels)
     
-    return (c(accuracy, run_time))
+    #cat("Accuracy test:", accuracy.test, sep = "\n")
+    #cat("Accuracy train:", accuracy.train, sep = "\n")
+    
+    return (c(accuracy.test, accuracy.train, run_time))
   })
   return(cross_validation_results)
 }
 
-res_cross_validation_with_random_forest.100 <- optimized_cross_validation_random_forest(min_max_z_gau.label,123, 100, 31)
+ns <- function () {
+  ns_result <- lapply(c(1,50,100,300), function(x) {
+    cat("Tree:", x, sep = "\n")
+    data <- optimized_cross_validation_random_forest(dataset_shuffle[],123, x, 10)
+    data <- do.call(rbind, data[])
+    data <- as.data.frame(data)
+    variance.test <- var(data[,1])
+    variance.train <- var(data[,2])
+    
+    mean.test <- mean(data[,1])
+    mean.train <- mean(data[,2])
+    
+    str_dev.test <- sqrt(variance.test)
+    #cat("str_dev.test:", str_dev.test, sep = "\n")
+    #cat("(mean.test + str_dev.test):", (mean.test + str_dev.test), sep = "\n")
+    str_dev.train <- sqrt(variance.train)
+    
+    mean.runtime <- mean(data[,3])
+    
+    return(c(mean.test, (mean.test + str_dev.test), (mean.test - str_dev.test), mean.train, (mean.train + str_dev.train), (mean.train - str_dev.train), mean.runtime))
+  })
+  return(ns_result)
+}
+
+res_crossVa <- ns()
+
+plot_rf_data <- function(data_to_plot) {
+  rf_plot_data <- do.call(rbind, data_to_plot[])
+  rf_plot_data  <- as.data.frame(rf_plot_data )
+  x_range <- c(1,50,100,300)
+  plot(x_range, rf_plot_data[,1], type="b", col=3, lwd=3, pch=1, xlab="Trees", ylab="Mean Accuracy [%]", ylim=range(0.5,1))
+  plot_labels <- c("Mean Accuracy test")
+  #lines(x_range, rf_plot_data[,2], type="b", col=2, lwd=1)
+  #lines(x_range, rf_plot_data[,3], type="b", col=2, lwd=1)
+  polygon(c(x_range, rev(x_range)), c(rf_plot_data[,2], rev(rf_plot_data[,3])), col = adjustcolor("red",alpha.f=0.2) )
+  lines(x_range, rf_plot_data[,4], type="b", col=4, lwd=3, pch=1)
+  plot_labels[[2]] <- c("Mean Accuracy train")
+  #lines(x_range, rf_plot_data[,5], type="b", col=2, lwd=1)
+  #lines(x_range, rf_plot_data[,6], type="b", col=2, lwd=1)
+  polygon(c(x_range, rev(x_range)), c(rf_plot_data[,5], rev(rf_plot_data[,6])), col = adjustcolor("red",alpha.f=0.2) )
+  par(new = TRUE)
+  plot(x_range, rf_plot_data[,7], type = "b", col=1,lwd=1, pch=1, axes = FALSE, bty = "n", xlab = "", ylab = "")
+  axis(side=4, at = pretty(range(rf_plot_data[,7])))
+  mtext("Mean run time / [s]", side=4, line=3)
+  plot_labels[[3]] <- c("Mean runtime")
+  legend("bottomright",plot_labels, lwd=c(3,3,1), col=c(3,4,1), pch=c(1,1,1), y.intersp=1)
+  title("All persons raw data")
+}
+
+plot_rf_data(res_crossVa)
 
 ##
 #The zouqi way
 ##
 
 #Preparing PCA
-pca.5 <- performPCA(min_max_z_gau.label[,-1], 31)
+pca.5 <- performPCA(id[,-1], 31)
+
+#Take one person and transform dataset and add States column
+df.transformed.dataset <- transform.data(data_train_with_labels, pca.5)
+datanew <- cbind(df.transformed.dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+datanew$States <- factor(datanew[,6])
+
+start_time <- Sys.time()
+# Create Random Forest classifer. Uses single person.
+model <- randomForest(States ~ ., data = datanew, ntree=tree.count)
+end_time <- Sys.time()
+
+
+
 pca.10 <- pca.5$x[,1:31]
 pca.10 <- data.frame(pca.10) # Make it a data frame
 
@@ -649,8 +719,11 @@ plot(model.random.100.disjunct, main ="Error as a function of trees") # Error as
 legend("topright", colnames(model.random$err.rate),col=1:1, cex=0.8,fill=1:12)
 
 # 10-fold cross validation
+
+model.random.100.raw_all_person.train <- randomForest(V1 ~ . , data = raw_all_persons_train, ntree=100)
+
 start_time <- Sys.time()
-model.cv <- rf.crossValidation(x = model.random, xdata = min_max_z_gau.label, p = 0.1, n = 10, trace = TRUE) 
+model.cv <- rf.crossValidation(x = model.random.100.raw_all_person.train, xdata = raw_all_persons_train, p = 0.1, n = 10, trace = TRUE) 
 end_time <- Sys.time()
 run_time <- end_time - start_time #Time difference of 4.699376 hours 1 run
 
@@ -673,8 +746,8 @@ plot(model.cv, type = "model", main = "Model producers accuracy")
 
 # Plot cross validation verses model OOB
 par(mfrow=c(1,2)) 
-plot(model.cv, type = "cv", stat = "oob", main = "CV OOB error")
-plot(model.cv, type = "model", stat = "oob", main = "Model OOB error")
+plot(model.cv, type = "cv", stat = "oob", main = "CV OOB error", xlim=range(0,20), ylim=range(0,0.022))
+plot(model.cv, type = "model", stat = "oob", main = "Model OOB error", xlim=range(0,20), ylim=range(0,0.022))
 
 # Plot cross validation verses model producers accuracy. Disjunkt
 par(mfrow=c(1,2)) 
@@ -743,3 +816,16 @@ boxplot(res_random_forest.100.not.processed[[2]],res_random_forest.100.min_max_n
 #Plot both 100 and 500 
 boxplot(res_random_forest.100[[1]],res_random_forest.500[[1]], names=c("100 trees","500 trees"), main="Accuracy")
 boxplot(res_random_forest.100[[2]],res_random_forest.500[[2]], names=c("100 trees","500 trees"), main="Run time in s")
+
+
+
+x <- 1:10
+y <- rnorm(10)
+## second data set on a very different scale
+z <- runif(10, min=1000, max=10000) 
+par(mar = c(5, 4, 4, 4) + 0.3)  # Leave space for z axis
+plot(x, y) # first plot
+par(new = TRUE)
+plot(x, z, type = "l", axes = FALSE, bty = "n", xlab = "", ylab = "")
+axis(side=4, at = pretty(range(z)))
+mtext("z", side=4, line=3)
