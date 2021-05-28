@@ -224,6 +224,7 @@ plotData2 (z_min_max_gau)
 
 z_gau <- gaussianSmoothing(id_z_normalized, 0.75)
 plotData2 (z_gau)
+z_gau.labels <- cbind(V1 = id[1], z_gau)
 
 z_gau_min_max <- as.data.frame(lapply(z_gau, normalize))
 plotData2 (z_gau_min_max)
@@ -444,7 +445,9 @@ plot(cumsum(pve[1:100]), xlab="Principal Component ", ylab=" Cumulative Proporti
 
 #Transform data
 transform.data <- function(dataset, pca){
+  cat("HERE")
   transformed.dataset <- predict(pca, newdata = dataset)
+  cat("transformed.dataset:", nrow(transformed.dataset), sep = " ")
   # Convert to transformed dataset to dataframe
   df.transformed.dataset <- as.data.frame(transformed.dataset) 
   return (df.transformed.dataset)
@@ -508,13 +511,24 @@ cross_validation_random_forest <- function(data_set, seed, numberoftrees) {
 ##Optimized CR
 ###
 
+folds <- lapply(c(0,3,7,11,13,15,19,24,28,30), function(x) {
+  startVal <- 1 + (x * 2000)
+  endVal <- (startVal + (4 * 2000)) - 1
+  return(startVal:endVal)
+})
+
 optimized_cross_validation_random_forest <- function(data_set, seed, numberoftrees, principal_components) {
   set.seed(seed)
-  folds <-createFolds(data_set[, 1], k = 10) 
+  folds <- lapply(c(0,3,7,11,13,15,19,24,28,30), function(x) {
+    startVal <- 1 + (x * 2000)
+    endVal <- (startVal + (4 * 2000)) - 1
+    return(startVal:endVal)
+  })
+  #folds <-createFolds(data_set[, 1], k = 10) 
   tree.count <- numberoftrees
   
   cross_validation_results <- lapply(folds, function(x) {
-    cat("Fold:", x, sep = " ")
+    #cat("Fold:", x, sep = " ")
     #90% of the entire dataset is assigned to data_train
     data_train_with_labels <- data_set[-x, ]
     data_train <- data_train_with_labels[, -1]
@@ -544,7 +558,7 @@ optimized_cross_validation_random_forest <- function(data_set, seed, numberoftre
     run_time <- difftime(Sys.time(), start_time, units = "secs")
     
     df.transformed.test_dataset <- transform.data(data_test_with_labels, pca)
-    datanew_test <- cbind(df.transformed.test_dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew_test <- cbind(df.transformed.test_dataset, data_test_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
     datanew_test$States <- factor(datanew_test[,principal_components + 1])
     #datanew_test$`data_train_with_labels[,1]` <- NULL
     
@@ -571,7 +585,7 @@ optimized_cross_validation_random_forest <- function(data_set, seed, numberoftre
 ns <- function () {
   ns_result <- lapply(c(1,50,100,300), function(x) {
     cat("Tree:", x, sep = "\n")
-    data <- optimized_cross_validation_random_forest(dataset_shuffle[],123, x, 10)
+    data <- optimized_cross_validation_random_forest(id,123, x, 10)
     data <- do.call(rbind, data[])
     data <- as.data.frame(data)
     variance.test <- var(data[,1])
