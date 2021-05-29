@@ -810,6 +810,8 @@ par(new = TRUE)
 plot(x, z, type = "l", axes = FALSE, bty = "n", xlab = "", ylab = "")
 axis(side=4, at = pretty(range(z)))
 mtext("z", side=4, line=3)
+
+
 ###########################################################################
 ########################### K N N section #################################
 ###########################################################################
@@ -820,10 +822,20 @@ mtext("z", side=4, line=3)
 ###########
 ## Cross-validate KNN, 10-folds
 ###########
-cross_validation_knn <- function(data_set, seed, k_value) {
+cross_validation_knn <- function(data_set, seed, k_value, disjunct = FALSE) {
   set.seed(seed)
   
-  folds <-createFolds(data_set[, 1], k = 10) 
+  if(disjunct == FALSE) {
+    folds <-createFolds(data_set[, 1], k = 10) 
+  }
+  
+  if(disjunct == TRUE) {
+    folds <- lapply(c(0,3,7,11,13,15,19,24,28,30), function(x) {
+      startVal <- 1 + (x * 2000)
+      endVal <- (startVal + (4 * 2000)) - 1
+      return(startVal:endVal)
+    })
+  }
   
   accuracyList <- c(1:10)
   runtimeList <- c(1:10)
@@ -858,12 +870,23 @@ cross_validation_knn <- function(data_set, seed, k_value) {
 ###########
 ## Cross-validate KNN with PCA, 10-folds
 ###########
-cross_validation_knn_pca <- function(data_set, seed, k_value, pca_count) {
+cross_validation_knn_pca <- function(data_set, seed, k_value, pca_count, disjunct = FALSE) {
   set.seed(seed)
   
-  folds <-createFolds(data_set[, 1], k = 10) 
+  if(disjunct == FALSE) {
+    folds <-createFolds(data_set[, 1], k = 10) 
+  }
+  
+  if(disjunct == TRUE) {
+    folds <- lapply(c(0,3,7,11,13,15,19,24,28,30), function(x) {
+      startVal <- 1 + (x * 2000)
+      endVal <- (startVal + (4 * 2000)) - 1
+      return(startVal:endVal)
+    })
+  }
   
   accuracyList <- c(1:10)
+  accuracyList.training <- c(1:10)
   runtimeList <- c(1:10)
   
   for(i in 1:10) {
@@ -886,8 +909,13 @@ cross_validation_knn_pca <- function(data_set, seed, k_value, pca_count) {
     id_test_pred <- knn(train = id_train, test = id_test, cl = id_train_labels, k=k_value)
     run_time <- difftime(Sys.time(), start_time, units = "secs")
     
+    id_test_pred.training <- knn(train = id_train, test = id_train, cl = id_train_labels, k=k_value)
+    
+    cf.training <- confusionMatrix(id_train_labels, id_test_pred.training)
+    
     cf <- confusionMatrix(id_test_labels, id_test_pred)
     accuracyList[i] <- sum(diag(cf$table))/sum(cf$table)
+    accuracyList.training[i] <- sum(diag(cf.training$table))/sum(cf.training$table)
     runtimeList[i] <- run_time
     
     
@@ -897,8 +925,10 @@ cross_validation_knn_pca <- function(data_set, seed, k_value, pca_count) {
   varianceRuntime <- var(runtimeList)
   meanAccuracy <- mean(accuracyList)
   varianceAccuracy <- var(accuracyList)
+  meanAccuracy.training <- mean(accuracyList.training)
+  varianceAccuracy.training <- var(accuracyList.training)
   
-  return(c(meanAccuracy, varianceAccuracy, meanRuntime, varianceRuntime))
+  return(c(meanAccuracy, varianceAccuracy, meanRuntime,  meanAccuracy.training, varianceAccuracy.training))
 }
 
 
@@ -931,14 +961,14 @@ std_dev_lists <- function(variance_list_input, mean_list_input) {
 ############################################
 # Plots results of CV on KNN for 10 k values
 ############################################
-knn_cv_and_plot <- function(dataset, description) { 
+knn_cv_and_plot <- function(dataset, description, disjunct = FALSE) { 
   
   accuracyList <- c()
   runtimeList <- c()
   varianceList <- c()
   resultList <- c()
   for (i in seq(1,101, by = 10)) { 
-    resultList[[i]] <- cross_validation_knn(dataset, 1234, i)
+    resultList[[i]] <- cross_validation_knn(dataset, 1234, i, disjunct)
     accuracyList[[i]] <- resultList[[i]][1]
     varianceList[[i]] <- resultList[[i]][2]
     runtimeList[[i]] <- resultList[[i]][3]
@@ -968,14 +998,14 @@ knn_cv_and_plot <- function(dataset, description) {
 ##################################################
 # Plots results of CV on KNN for 3 k values
 ##################################################
-knn_cv_and_plot_small_run <- function(dataset, description, pca_count) { 
+knn_cv_and_plot_small_run <- function(dataset, description, pca_count, disjunct = FALSE) { 
   
   accuracyList <- c()
   runtimeList <- c()
   varianceList <- c()
   resultList <- c()
   for (i in seq(1,101, by = 50)) { 
-    resultList[[i]] <- cross_validation_knn(dataset, 1234, i)
+    resultList[[i]] <- cross_validation_knn(dataset, 1234, i, disjunct)
     accuracyList[[i]] <- resultList[[i]][1]
     varianceList[[i]] <- resultList[[i]][2]
     runtimeList[[i]] <- resultList[[i]][3]
@@ -1005,34 +1035,49 @@ knn_cv_and_plot_small_run <- function(dataset, description, pca_count) {
 ##################################################
 # Plots results of CV on KNN w/ PCA for 3 k values
 ##################################################
-knn_cv_and_plot_pca <- function(dataset, description, pca_count) { 
+knn_cv_and_plot_pca <- function(dataset, description, pca_count, disjunct = FALSE) { 
   
   accuracyList <- c()
   runtimeList <- c()
   varianceList <- c()
   resultList <- c()
+  accuracyList.training <- c()
+  varianceList.training <- c()
   for (i in seq(1,101, by = 50)) { 
-    resultList[[i]] <- cross_validation_knn_pca(dataset, 1234, i, pca_count)
+    resultList[[i]] <- cross_validation_knn_pca(dataset, 1234, i, pca_count, disjunct)
     accuracyList[[i]] <- resultList[[i]][1]
     varianceList[[i]] <- resultList[[i]][2]
     runtimeList[[i]] <- resultList[[i]][3]
+    accuracyList.training[[i]] <- resultList[[i]][4]
+    varianceList.training[[i]] <- resultList[[i]][5]
   } 
   
   std_dev <- std_dev_lists(varianceList, accuracyList)
   upper <- std_dev[[1]]
   lower <- std_dev[[2]]
   
-  plot(c(1,51,101), unlist(accuracyList), type="b", col=3, lwd=3, pch=1, xlab="K value", ylab="Mean Accuracy [%]")
-  plot_labels <- c("Mean Accuracy")
+  std_dev.training <- std_dev_lists(varianceList.training, accuracyList.training)
+  upper.training <- std_dev.training[[1]]
+  lower.training <- std_dev.training[[2]]
+  
+  ## Test data
+  plot(c(1,51,101), unlist(accuracyList.training), type="b", col=4, lwd=3, pch=3, xlab="K value", ylab="Mean Accuracy [%]")
+  plot_labels <- c("Mean Accuracy Training")
+  lines(c(1,51,101), unlist(upper.training), type="b", col=2, lwd=1, pch=4)
+  plot_labels[2] <- paste("Std. Deviation Training")
+  lines(c(1,51,101), unlist(lower.training), type="b", col=2, lwd=1, pch=4)
+  plot_labels[3] <- paste("Std. Deviation Training")
+  polygon(c(c(1,51,101), rev(c(1,51,101))), c(upper.training, rev(lower.training)), col = adjustcolor("red",alpha.f=0.2) )
+  lines(c(1,51,101), unlist(accuracyList), type="b", col=3, lwd=3, pch=1)
+  plot_labels[4] <- c("Mean Accuracy")
   lines(c(1,51,101), unlist(upper), type="b", col=2, lwd=1, pch=2)
-  plot_labels[2] <- paste("Std. Deviation")
+  plot_labels[5] <- paste("Std. Deviation")
   lines(c(1,51,101), unlist(lower), type="b", col=2, lwd=1, pch=2)
-  plot_labels[3] <- paste("Std. Deviation")
+  plot_labels[6] <- paste("Std. Deviation")
   polygon(c(c(1,51,101), rev(c(1,51,101))), c(upper, rev(lower)), col = adjustcolor("red",alpha.f=0.2) )
-  legend("bottomleft",plot_labels, lwd=c(1), col=c(3,2,2), pch=c(1,2,2), y.intersp=1)
+  legend("topright",plot_labels, lwd=c(1), col=c(4,2,2,3,2,2), pch=c(3,4,4,1,2,2), y.intersp=1)
   header <- paste("Accuracy, ",description, sep="")
   title(header)
-  
   plot(c(1,51,101), unlist(runtimeList), type="b", col=1, lwd=1, pch=1, xlab="K value", ylab="Mean Runtime [s]")
   header <- paste("Runtime, ",description, sep="")
   title(header)
@@ -1043,52 +1088,52 @@ knn_cv_and_plot_pca <- function(dataset, description, pca_count) {
 knn_cv_and_plot(dataset_shuffle, "raw data - all persons in") #### WARNING: Roughly 11 hour runtime
 
 #Raw, disjunct, 10 different k vals
-knn_cv_and_plot(id, "raw data - disjunct") #### WARNING: Roughly 11 hour runtime
+knn_cv_and_plot(id, "raw data - disjunct", TRUE) #### WARNING: Roughly 11 hour runtime #TODO
 
 #Raw, all persons in and disjunct, 3 different k vals (made for overfit check, be sure to adjust functions to do this)
 knn_cv_and_plot_small_run(dataset_shuffle, "raw data - all persons in - overfit check") #### WARNING: Roughly 25 hour runtime
-knn_cv_and_plot_small_run(id, "raw data - disjunct - overfit check") #### WARNING: Roughly 25 hour runtime
+knn_cv_and_plot_small_run(id, "raw data - disjunct - overfit check", TRUE) #### WARNING: Roughly 25 hour runtime #TODO
 
 
-#Gau smoothing, 3 different k vals, all-persons-in
+#Gau smoothing, 3 different k vals, all-persons-in 
 gu_si_075.all <- gaussianSmoothing(dataset_shuffle[,-1], 0.75)
 gu_si_075.all <- cbind(V1 = dataset_shuffle[1], gu_si_075.all)
 knn_cv_and_plot_small_run(gu_si_075.all, "gaussian smoothing applied, sigma = 0.75, all persons in")
 
-#Gau smoothing, 3 different k vals, disjunct
+#Gau smoothing, 3 different k vals, disjunct #TODO
 gu_si_075.dis <- gaussianSmoothing(id[,-1], 0.75)
 gu_si_075.dis <- cbind(V1 = id[1], gu_si_075.dis)
-knn_cv_and_plot_small_run(gu_si_075.dis, "gaussian smoothing applied, sigma = 0.75, disjunct")
+knn_cv_and_plot_small_run(gu_si_075.dis, "gaussian smoothing applied, sigma = 0.75, disjunct", TRUE)
 
-#Z-score standardization, 3 different k vals, all persons in
+#Z-score standardization, 3 different k vals, all persons in 
 id_z_normalized.all <- as.data.frame(scale(dataset_shuffle[-1]))
 id_z_normalized.all <- cbind(V1 = dataset_shuffle[1], id_z_normalized.all)
 knn_cv_and_plot_small_run(id_z_normalized.all, "Z-score normalization applied, all persons in")
 
-#Z-score standardization, 3 different k vals, disjunct
+#Z-score standardization, 3 different k vals, disjunct #TODO
 id_z_normalized.dis <- as.data.frame(scale(id[-1]))
 id_z_normalized.dis <- cbind(V1 = id[1], id_z_normalized.dis)
-knn_cv_and_plot_small_run(id_z_normalized.dis, "Z-score normalization applied, disjunct")
+knn_cv_and_plot_small_run(id_z_normalized.dis, "Z-score normalization applied, disjunct", TRUE)
 
 
 
-#PCA on raw, all persons in data
+#PCA on raw, all persons in data #TODO
 knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 10 PCs", 10)
 knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 21 PCs", 21)
 knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 31 PCs", 31)
 
 
-#PCA on raw, disjunct data
-knn_cv_and_plot_pca(id, "raw data - disjunct, 10 PCs", 10)
-knn_cv_and_plot_pca(id, "raw data - disjunct, 21 PCs", 21)
-knn_cv_and_plot_pca(id, "raw data - disjunct, 31 PCs", 31)
+#PCA on raw, disjunct data #TODO
+knn_cv_and_plot_pca(id, "raw data - disjunct, 10 PCs", 10, TRUE)
+knn_cv_and_plot_pca(id, "raw data - disjunct, 21 PCs", 21, TRUE)
+knn_cv_and_plot_pca(id, "raw data - disjunct, 31 PCs", 31, TRUE)
 
 
 ##################################
 ### Combined preprocessing w/ PCA
 ##################################
 
-#Min-max -> Z-score -> Gau (.75)-> PCA 21 - all persons in
+#Min-max -> Z-score -> Gau (.75)-> PCA 21 - all persons in #TODO
 id_min_max_normalized <- as.data.frame(lapply(dataset_shuffle[-1], normalize))
 id_min_max_z_normalized <- as.data.frame(id_min_max_normalized)
 min_max_z_gau <- gaussianSmoothing(id_min_max_z_normalized, 0.75)
@@ -1097,11 +1142,9 @@ knn_cv_and_plot_pca(min_max_z_gau, "Min-max -> Z -> Gau (.75) - all persons in, 
 
 
 
-#Min-max -> Z-score -> Gau -> PCA - disjunct
+#Min-max -> Z-score -> Gau -> PCA 21 - disjunct #TODO
 id_min_max_normalized <- as.data.frame(lapply(id[-1], normalize))
 id_min_max_z_normalized <- as.data.frame(id_min_max_normalized)
 min_max_z_gau <- gaussianSmoothing(id_min_max_z_normalized, 0.75)
 min_max_z_gau <- cbind(V1 = id[1], min_max_z_gau)
-knn_cv_and_plot_pca(min_max_z_gau, "Min-max -> Z -> Gau (.75) - disjunct, 21 PCs", 21)
-
-
+knn_cv_and_plot_pca(min_max_z_gau, "Min-max -> Z -> Gau (.75) - disjunct, 21 PCs", 21, TRUE)
