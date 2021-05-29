@@ -655,7 +655,7 @@ knn_cv_and_plot_small_run <- function(dataset, description, pca_count) {
   varianceList <- c()
   resultList <- c()
   for (i in seq(1,101, by = 50)) { 
-    resultList[[i]] <- cross_validation_knn(dataset, 1234, i, pca_count)
+    resultList[[i]] <- cross_validation_knn(dataset, 1234, i)
     accuracyList[[i]] <- resultList[[i]][1]
     varianceList[[i]] <- resultList[[i]][2]
     runtimeList[[i]] <- resultList[[i]][3]
@@ -725,7 +725,30 @@ knn_cv_and_plot(dataset_shuffle, "raw data - all persons in") #### WARNING: Roug
 #Raw, disjunct, 10 different k vals
 knn_cv_and_plot(id, "raw data - disjunct") #### WARNING: Roughly 11 hour runtime
 
+#Raw, all persons in and disjunct, 3 different k vals (made for overfit check, be sure to adjust functions to do this)
+knn_cv_and_plot_small_run(dataset_shuffle, "raw data - all persons in - overfit check") #### WARNING: Roughly 25 hour runtime
+knn_cv_and_plot_small_run(id, "raw data - disjunct - overfit check") #### WARNING: Roughly 25 hour runtime
 
+
+#Gau smoothing, 3 different k vals, all-persons-in
+gu_si_075.all <- gaussianSmoothing(dataset_shuffle[,-1], 0.75)
+gu_si_075.all <- cbind(V1 = dataset_shuffle[1], gu_si_075.all)
+knn_cv_and_plot_small_run(gu_si_075.all, "gaussian smoothing applied, sigma = 0.75, all persons in")
+
+#Gau smoothing, 3 different k vals, disjunct
+gu_si_075.dis <- gaussianSmoothing(id[,-1], 0.75)
+gu_si_075.dis <- cbind(V1 = id[1], gu_si_075.dis)
+knn_cv_and_plot_small_run(gu_si_075.dis, "gaussian smoothing applied, sigma = 0.75, disjunct")
+
+#Z-score standardization, 3 different k vals, all persons in
+id_z_normalized.all <- as.data.frame(scale(dataset_shuffle[-1]))
+id_z_normalized.all <- cbind(V1 = dataset_shuffle[1], id_z_normalized.all)
+knn_cv_and_plot_small_run(id_z_normalized.all, "Z-score normalization applied, all persons in")
+
+#Z-score standardization, 3 different k vals, disjunct
+id_z_normalized.dis <- as.data.frame(scale(id[-1]))
+id_z_normalized.dis <- cbind(V1 = id[1], id_z_normalized.dis)
+knn_cv_and_plot_small_run(id_z_normalized.dis, "Z-score normalization applied, disjunct")
 
 
 
@@ -739,5 +762,26 @@ knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 31 PCs", 31)
 knn_cv_and_plot_pca(id, "raw data - disjunct, 10 PCs", 10)
 knn_cv_and_plot_pca(id, "raw data - disjunct, 21 PCs", 21)
 knn_cv_and_plot_pca(id, "raw data - disjunct, 31 PCs", 31)
+
+
+##################################
+### Combined preprocessing w/ PCA
+##################################
+
+#Min-max -> Z-score -> Gau (.75)-> PCA 21 - all persons in
+id_min_max_normalized <- as.data.frame(lapply(dataset_shuffle[-1], normalize))
+id_min_max_z_normalized <- as.data.frame(id_min_max_normalized)
+min_max_z_gau <- gaussianSmoothing(id_min_max_z_normalized, 0.75)
+min_max_z_gau <- cbind(V1 = dataset_shuffle[1], min_max_z_gau)
+knn_cv_and_plot_pca(min_max_z_gau, "Min-max -> Z -> Gau (.75) - all persons in, 21 PCs", 21)
+
+
+
+#Min-max -> Z-score -> Gau -> PCA - disjunct
+id_min_max_normalized <- as.data.frame(lapply(id[-1], normalize))
+id_min_max_z_normalized <- as.data.frame(id_min_max_normalized)
+min_max_z_gau <- gaussianSmoothing(id_min_max_z_normalized, 0.75)
+min_max_z_gau <- cbind(V1 = id[1], min_max_z_gau)
+knn_cv_and_plot_pca(min_max_z_gau, "Min-max -> Z -> Gau (.75) - disjunct, 21 PCs", 21)
 
 
