@@ -868,7 +868,7 @@ cross_validation_knn <- function(data_set, seed, k_value, disjunct = FALSE) {
     
 }
 ###########
-## Cross-validate KNN with PCA, 10-folds
+## Cross-validate KNN with PCA, 10-folds, also checks overfitting
 ###########
 cross_validation_knn_pca <- function(data_set, seed, k_value, pca_count, disjunct = FALSE) {
   set.seed(seed)
@@ -1060,8 +1060,14 @@ knn_cv_and_plot_pca <- function(dataset, description, pca_count, disjunct = FALS
   upper.training <- std_dev.training[[1]]
   lower.training <- std_dev.training[[2]]
   
+  upperList <- c(upper.training, upper)
+  lowerList <- c(lower.training, lower)
+  
+  rangeUpper <- lapply(list(upperList), function(x) x[which.max(abs(x))])
+  rangeLower <- lapply(list(lowerList), function(x) x[which.min(abs(x))])
+  
   ## Test data
-  plot(c(1,51,101), unlist(accuracyList.training), type="b", col=4, lwd=3, pch=3, xlab="K value", ylab="Mean Accuracy [%]")
+  plot(c(1,51,101), unlist(accuracyList.training), ylim=range(rangeLower, rangeUpper), type="b", col=4, lwd=3, pch=3, xlab="K value", ylab="Mean Accuracy [%]")
   plot_labels <- c("Mean Accuracy Training")
   lines(c(1,51,101), unlist(upper.training), type="b", col=2, lwd=1, pch=4)
   plot_labels[2] <- paste("Std. Deviation Training")
@@ -1075,9 +1081,10 @@ knn_cv_and_plot_pca <- function(dataset, description, pca_count, disjunct = FALS
   lines(c(1,51,101), unlist(lower), type="b", col=2, lwd=1, pch=2)
   plot_labels[6] <- paste("Std. Deviation")
   polygon(c(c(1,51,101), rev(c(1,51,101))), c(upper, rev(lower)), col = adjustcolor("red",alpha.f=0.2) )
-  legend("topright",plot_labels, lwd=c(1), col=c(4,2,2,3,2,2), pch=c(3,4,4,1,2,2), y.intersp=1)
+  legend("topright",plot_labels, lwd=c(1), col=c(4,2,2,3,2,2), pch=c(3,4,4,1,2,2), y.intersp=1, cex = 0.6)
   header <- paste("Accuracy, ",description, sep="")
   title(header)
+  
   plot(c(1,51,101), unlist(runtimeList), type="b", col=1, lwd=1, pch=1, xlab="K value", ylab="Mean Runtime [s]")
   header <- paste("Runtime, ",description, sep="")
   title(header)
@@ -1118,12 +1125,12 @@ knn_cv_and_plot_small_run(id_z_normalized.dis, "Z-score normalization applied, d
 
 
 #PCA on raw, all persons in data #TODO
-knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 10 PCs", 10)
-knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 21 PCs", 21)
-knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 31 PCs", 31)
+knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 10 PCs", 10) #TODO
+knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 21 PCs", 21) #TODO
+knn_cv_and_plot_pca(dataset_shuffle, "raw data - all persons in, 31 PCs", 31) #TODO
 
 
-#PCA on raw, disjunct data #TODO
+#PCA on raw, disjunct data #
 knn_cv_and_plot_pca(id, "raw data - disjunct, 10 PCs", 10, TRUE)
 knn_cv_and_plot_pca(id, "raw data - disjunct, 21 PCs", 21, TRUE)
 knn_cv_and_plot_pca(id, "raw data - disjunct, 31 PCs", 31, TRUE)
