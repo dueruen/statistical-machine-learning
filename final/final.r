@@ -487,7 +487,7 @@ cross_validation_random_forest <- function(data_set, seed, numberoftrees) {
     end_time <- Sys.time()
     
     df.transformed.test_dataset <- transform.data(data_test_with_labels, pca.5)
-    datanew_test <- cbind(df.transformed.test_dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew_test <- cbind(df.transformed.test_dataset, data_test_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
     datanew_test$States <- factor(datanew_test[,6])
     
     #Predict random vs. test set
@@ -514,7 +514,7 @@ optimized_cross_validation_random_forest <- function(data_set, seed, numberoftre
   tree.count <- numberoftrees
   
   cross_validation_results <- lapply(folds, function(x) {
-    cat("Fold:", x, sep = " ")
+    #cat("Fold:", x, sep = " ")
     #90% of the entire dataset is assigned to data_train
     data_train_with_labels <- data_set[-x, ]
     data_train <- data_train_with_labels[, -1]
@@ -538,13 +538,14 @@ optimized_cross_validation_random_forest <- function(data_set, seed, numberoftre
     #datanew$`data_train_with_labels[,1]` <- NULL
     
     start_time <- Sys.time()
-    # Create Random Forest classifer. 
-    model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10, data = datanew, ntree=tree.count)
+    # Create Random Forest classifer. Change these when changing in NC method
+    #model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10, data = datanew, ntree=tree.count)
     #model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15 + PC16 + PC17 + PC18 + PC19 + PC20 + PC21, data = datanew, ntree=tree.count)
+    model <- randomForest(States ~ PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10 + PC11 + PC12 + PC13 + PC14 + PC15 + PC16 + PC17 + PC18 + PC19 + PC20 + PC21 + PC22 + PC23 + PC24 + PC25 + PC26 + PC27 + PC28 + PC29 + PC30 + PC31, data = datanew, ntree=tree.count)
     run_time <- difftime(Sys.time(), start_time, units = "secs")
     
     df.transformed.test_dataset <- transform.data(data_test_with_labels, pca)
-    datanew_test <- cbind(df.transformed.test_dataset, data_train_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
+    datanew_test <- cbind(df.transformed.test_dataset, data_test_with_labels[,1]) # 'df.transformed.dataset' is a dataframe
     datanew_test$States <- factor(datanew_test[,principal_components + 1])
     #datanew_test$`data_train_with_labels[,1]` <- NULL
     
@@ -568,10 +569,11 @@ optimized_cross_validation_random_forest <- function(data_set, seed, numberoftre
   return(cross_validation_results)
 }
 
-ns <- function () {
-  ns_result <- lapply(c(1,50,100,300), function(x) {
+#Function that does we run cross-validation with different trees. 
+ns <- function (dataset,nr_pc) {
+  ns_result <- lapply(c(1,15,30,50,100), function(x) {
     cat("Tree:", x, sep = "\n")
-    data <- optimized_cross_validation_random_forest(dataset_shuffle[],123, x, 10)
+    data <- optimized_cross_validation_random_forest(dataset,123, x, nr_pc) #Change dataset to min_max_z_gau.label
     data <- do.call(rbind, data[])
     data <- as.data.frame(data)
     variance.test <- var(data[,1])
@@ -592,12 +594,18 @@ ns <- function () {
   return(ns_result)
 }
 
-res_crossVa <- ns()
+res_crossVa.raw_all_person_in_10pc <- ns(dataset_shuffle,10)
+res_crossVa.raw_all_person_in_21pc <- ns(dataset_shuffle,21)
+res_crossVa.raw_all_person_in_31pc <- ns(dataset_shuffle,31)
+
+res_crossVa.preprocessed_min_max_z_gau_10pc <- ns(min_max_z_gau.label,10)
+res_crossVa.preprocessed_min_max_z_gau_21pc <- ns(min_max_z_gau.label,21)
+res_crossVa.preprocessed_min_max_z_gau_31pc <- ns(min_max_z_gau.label,31)
 
 plot_rf_data <- function(data_to_plot) {
   rf_plot_data <- do.call(rbind, data_to_plot[])
   rf_plot_data  <- as.data.frame(rf_plot_data )
-  x_range <- c(1,50,100,300)
+  x_range <- c(1,15,30,50,100)
   plot(x_range, rf_plot_data[,1], type="b", col=3, lwd=3, pch=1, xlab="Trees", ylab="Mean Accuracy [%]", ylim=range(0.5,1))
   plot_labels <- c("Mean Accuracy test")
   #lines(x_range, rf_plot_data[,2], type="b", col=2, lwd=1)
@@ -609,15 +617,21 @@ plot_rf_data <- function(data_to_plot) {
   #lines(x_range, rf_plot_data[,6], type="b", col=2, lwd=1)
   polygon(c(x_range, rev(x_range)), c(rf_plot_data[,5], rev(rf_plot_data[,6])), col = adjustcolor("red",alpha.f=0.2) )
   par(new = TRUE)
-  plot(x_range, rf_plot_data[,7], type = "b", col=1,lwd=1, pch=1, axes = FALSE, bty = "n", xlab = "", ylab = "")
-  axis(side=4, at = pretty(range(rf_plot_data[,7])))
+  plot(x_range, rf_plot_data[,7], type = "b", col=1,lwd=1, pch=1, axes = FALSE, bty = "n", xlab = "", ylab = "", ylim=range(0,45))
+  axis(side=4, at = pretty(range(0:40)))
   mtext("Mean run time / [s]", side=4, line=3)
   plot_labels[[3]] <- c("Mean runtime")
   legend("bottomright",plot_labels, lwd=c(3,3,1), col=c(3,4,1), pch=c(1,1,1), y.intersp=1)
-  title("All persons raw data")
+  title("Preprocessed all persons in with 10 PCs")
 }
 
-plot_rf_data(res_crossVa)
+plot_rf_data(res_crossVa.raw_all_person_in_10pc)
+plot_rf_data(res_crossVa.raw_all_person_in_21pc)
+plot_rf_data(res_crossVa.raw_all_person_in_31pc)
+
+plot_rf_data(res_crossVa.preprocessed_min_max_z_gau_10pc)
+plot_rf_data(res_crossVa.preprocessed_min_max_z_gau_21pc)
+plot_rf_data(res_crossVa.preprocessed_min_max_z_gau_31pc)
 
 ##
 #The zouqi way
